@@ -1,0 +1,1 @@
+DELETE FROM profiles WHERE id = '6a8453d4-1299-4e43-b4e5-dab4f20e5ce0'; DELETE FROM auth.users WHERE id = '6a8453d4-1299-4e43-b4e5-dab4f20e5ce0';

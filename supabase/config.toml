@@ -1,0 +1,25 @@
+project_id = "fgihobmcxjikuiezunuh"
+
+[functions.create-dealer]
+verify_jwt = false
+
+[functions.create-dealer-user]
+verify_jwt = false
+
+[functions.reset-dealer-user-password]
+verify_jwt = false
+
+[functions.suspend-dealer]
+verify_jwt = false
+
+[functions.resolve-identifier]
+verify_jwt = false
+
+[functions.dealer-remove-user]
+verify_jwt = false
+
+[functions.vin-decode]
+verify_jwt = false
+
+[functions.export-unit-pdf]
+verify_jwt = false

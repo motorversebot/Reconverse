@@ -1,0 +1,1 @@
+ALTER TYPE estimate_item_type ADD VALUE IF NOT EXISTS 'sublet';

@@ -1,0 +1,10 @@
+# Reconverse
+
+> Vehicle reconditioning workflow software for modern dealerships. One real-time pipeline used by dealership recon teams to move used cars from intake to frontline-ready.
+
+Reconverse gives dealer staff a single pipeline view of every unit in recon — intake, inspection, estimates, approvals, repair, QC, and ready-for-sale — so vehicles move from acquisition to the front line faster.
+
+## Pages
+
+- [Home](/): Product overview, workflow, and get started.
+- [Login](/login): Sign in for platform admins and dealer staff.

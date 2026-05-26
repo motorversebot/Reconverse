@@ -1,0 +1,1 @@
+ALTER TABLE public.units ADD COLUMN promise_date date DEFAULT NULL;
