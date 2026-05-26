@@ -6,7 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Upload, Trash2, Loader2, ImagePlus, X, ZoomIn, CheckCircle2,
@@ -213,10 +213,8 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
     (async () => {
       const urls: Record<string, string> = {};
       for (const photo of photos) {
-        const { data } = await supabase.storage
-          .from("unit-photos")
-          .createSignedUrl(photo.file_path, 3600);
-        if (data?.signedUrl) urls[photo.id] = data.signedUrl;
+        const signedUrl = `/api/v1/reconverse/photos/blob/${encodeURIComponent(photo.file_path)}`;
+        urls[photo.id] = signedUrl;
       }
       if (!cancelled) setSignedUrls(urls);
     })();
@@ -279,7 +277,7 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
     setUploadingCategory(category);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      
 
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) {
@@ -294,25 +292,32 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
         const ext = file.name.split(".").pop() || "jpg";
         const filePath = `${dealerId}/${unitId}/${crypto.randomUUID()}.${ext}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("unit-photos")
-          .upload(filePath, file, { contentType: file.type });
+        const _upForm = new FormData();
+          _upForm.append("file", file, { contentType: file.type });
+          _upForm.append("path", filePath);
+          const _upRes = await apiFetch("/api/v1/reconverse/photos/upload", { method: "POST", body: _upForm });
+          const _upJ = await _upRes.json().catch(() => null);
+          const uploadError = (!_upRes.ok || !_upJ?.ok) ? new Error(_upJ?.error || "Upload failed") : null;
 
         if (uploadError) {
           toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
           continue;
         }
 
-        const { error: insertError } = await supabase
-          .from("unit_photos" as any)
-          .insert({
+        const _insRes = await apiFetch("/api/v1/reconverse/photos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
             unit_id: unitId,
             dealer_id: dealerId,
             file_path: filePath,
             file_name: file.name,
             category,
             uploaded_by: user?.id ?? null,
-          } as any);
+          } as any),
+          });
+          const _insJ = await _insRes.json().catch(() => null);
+          const insertError = (!_insRes.ok || !_insJ?.ok) ? new Error(_insJ?.error || "Failed") : null;
 
         if (insertError) {
           toast({ title: "Error saving photo", description: insertError.message, variant: "destructive" });
@@ -334,15 +339,12 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: async (photo: UnitPhoto) => {
-      const { error: storageError } = await supabase.storage
-        .from("unit-photos")
-        .remove([photo.file_path]);
+      const _delRes = await apiFetch(`/api/v1/reconverse/photos/\${photo.id}`, { method: "DELETE" });
+      const _delJ = await _delRes.json().catch(() => null);
+      const storageError = (!_delRes.ok || !_delJ?.ok) ? new Error(_delJ?.error || "Delete failed") : null;
       if (storageError) throw storageError;
 
-      const { error: dbError } = await supabase
-        .from("unit_photos" as any)
-        .delete()
-        .eq("id", photo.id);
+      const dbError = null; // handled by API delete above
       if (dbError) throw dbError;
     },
     onSuccess: () => {

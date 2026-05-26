@@ -1,54 +1,34 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-
-async function getAuthHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session?.access_token}`,
-    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  };
+function useInvalidate() {
+  const qc = useQueryClient();
+  return (...keys: string[]) => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
 
 export function useCreateDealerUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: {
-      dealer_id: string;
-      email: string;
-      password: string;
-      full_name?: string;
-      role: string;
-    }) => {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/create-dealer-user`, {
-        method: "POST",
-        headers: await getAuthHeaders(),
+    mutationFn: async (payload: { dealer_id: string; email: string; role: string; full_name?: string }) => {
+      const res = await apiFetch("/api/v1/reconverse/dealer-users", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create user");
-      return data;
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
+      return j.data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dealer-members"] });
-      qc.invalidateQueries({ queryKey: ["dealer-dashboard-stats"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dealer-members"] }),
   });
 }
 
 export function useResetDealerUserPassword() {
   return useMutation({
-    mutationFn: async (payload: { user_id: string; new_password: string; dealer_id: string }) => {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/reset-dealer-user-password`, {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to reset password");
-      return data;
+    mutationFn: async (userId: string) => {
+      const res = await apiFetch(`/api/v1/reconverse/dealer-users/${userId}/reset-password`, { method: "POST" });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
+      return j.data;
     },
   });
 }
@@ -56,127 +36,76 @@ export function useResetDealerUserPassword() {
 export function useRemoveDealerUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { dealer_id: string; user_id: string }) => {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/dealer-remove-user`, {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(payload),
+    mutationFn: async ({ userId, dealerId }: { userId: string; dealerId: string }) => {
+      const res = await apiFetch(`/api/v1/reconverse/dealer-users/${userId}`, {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealer_id: dealerId }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to remove user");
-      return data;
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dealer-members"] });
-      qc.invalidateQueries({ queryKey: ["dealer-dashboard-stats"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dealer-members"] }),
   });
 }
 
 export function useCreateUnit() {
-  const qc = useQueryClient();
+  const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async (payload: {
-      dealer_id: string;
-      vin?: string | null;
-      stock_number?: string | null;
-      make?: string | null;
-      model?: string | null;
-      year?: number | null;
-      color?: string | null;
-      notes?: string | null;
-      status?: string;
-      trim?: string | null;
-      engine?: string | null;
-      body?: string | null;
-      drive_type?: string | null;
-      transmission?: string | null;
-      vin_decode_raw?: Record<string, string> | null;
-    }) => {
-      const { data, error } = await supabase.from("units").insert(payload as any).select().single();
-      if (error) throw error;
-      return data;
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await apiFetch("/api/v1/reconverse/units", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
+      return j.data.unit;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dealer-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-recent-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-dashboard-stats"] });
-    },
+    onSuccess: () => invalidate("dealer-units"),
   });
 }
 
 export function useUpdateUnit() {
-  const qc = useQueryClient();
+  const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async ({ id, ...payload }: {
-      id: string;
-      vin?: string | null;
-      stock_number?: string | null;
-      make?: string | null;
-      model?: string | null;
-      year?: number | null;
-      color?: string | null;
-      notes?: string | null;
-      status?: string;
-      trim?: string | null;
-      engine?: string | null;
-      body?: string | null;
-      drive_type?: string | null;
-      transmission?: string | null;
-      vin_decode_raw?: Record<string, string> | null;
-      promise_date?: string | null;
-    }) => {
-      const { data, error } = await supabase.from("units").update(payload as any).eq("id", id).select().single();
-      if (error) throw error;
-      return data;
+    mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
+      const res = await apiFetch(`/api/v1/reconverse/units/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
+      return j.data.unit;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dealer-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-recent-units"] });
-    },
+    onSuccess: () => invalidate("dealer-units", "dealer-unit"),
   });
 }
 
 export function useArchiveUnit() {
-  const qc = useQueryClient();
+  const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await (supabase
-        .from("units")
-        .update({ is_deleted: true, deleted_at: new Date().toISOString() } as any)
-        .eq("id", id) as any)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    mutationFn: async (unitId: string) => {
+      const res = await apiFetch(`/api/v1/reconverse/units/${unitId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_deleted: true }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dealer-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-archived-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-recent-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-dashboard-stats"] });
-    },
+    onSuccess: () => invalidate("dealer-units"),
   });
 }
 
 export function useRestoreUnit() {
-  const qc = useQueryClient();
+  const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await (supabase
-        .from("units")
-        .update({ is_deleted: false, deleted_at: null } as any)
-        .eq("id", id) as any)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    mutationFn: async (unitId: string) => {
+      const res = await apiFetch(`/api/v1/reconverse/units/${unitId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_deleted: false, deleted_at: null }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dealer-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-archived-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-recent-units"] });
-      qc.invalidateQueries({ queryKey: ["dealer-dashboard-stats"] });
-    },
+    onSuccess: () => invalidate("dealer-units", "dealer-archived-units"),
   });
 }

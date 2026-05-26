@@ -1,110 +1,56 @@
-import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useCurrentDealer } from "@/hooks/useDealerData";
+import { apiFetch } from "@/lib/api";
 
-export type Notification = {
+export interface Notification {
   id: string;
-  dealer_id: string;
-  user_id: string | null;
-  type: string;
-  severity: "info" | "warning" | "critical" | string;
   title: string;
   body: string;
+  type: string;
+  severity: string;
   unit_id: string | null;
-  metadata: Record<string, unknown>;
+  user_id: string | null;
+  dealer_id: string;
+  metadata: any;
   created_at: string;
-  read_at?: string | null;
-};
-
-function attachReadStatus(
-  rows: any[],
-  reads: { notification_id: string; read_at: string }[],
-): Notification[] {
-  const readMap = new Map(reads.map((r) => [r.notification_id, r.read_at]));
-  return rows.map((n) => ({ ...n, read_at: readMap.get(n.id) ?? null }));
+  read_at: string | null;
 }
 
-export function useNotifications(limit = 50) {
-  const { user } = useAuth();
-  const { data: membership } = useCurrentDealer();
-  const dealerId = membership?.dealer_id;
+export function useNotifications(dealerId: string | undefined, userId: string | undefined) {
   const qc = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ["notifications", dealerId, limit],
-    enabled: !!dealerId && !!user,
+  const { data: notifications = [], ...query } = useQuery({
+    queryKey: ["notifications", dealerId],
     queryFn: async () => {
-      const { data: notes, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("dealer_id", dealerId!)
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-
-      const ids = (notes ?? []).map((n: any) => n.id);
-      let reads: any[] = [];
-      if (ids.length) {
-        const { data } = await supabase
-          .from("notification_reads")
-          .select("notification_id, read_at")
-          .eq("user_id", user!.id)
-          .in("notification_id", ids);
-        reads = data ?? [];
-      }
-      return attachReadStatus(notes ?? [], reads);
+      const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/notifications`);
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) return [];
+      return j.data.notifications as Notification[];
     },
+    enabled: !!dealerId && !!userId,
+    refetchInterval: 30_000,
   });
 
-  // Realtime subscription
-  useEffect(() => {
-    if (!dealerId) return;
-    const channel = supabase
-      .channel(`notifications-${dealerId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `dealer_id=eq.${dealerId}` },
-        () => qc.invalidateQueries({ queryKey: ["notifications", dealerId] }),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [dealerId, qc]);
-
-  const unreadCount = (query.data ?? []).filter((n) => !n.read_at).length;
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   const markRead = useMutation({
     mutationFn: async (notificationId: string) => {
-      if (!user || !dealerId) return;
-      await supabase
-        .from("notification_reads")
-        .upsert(
-          { notification_id: notificationId, user_id: user.id, dealer_id: dealerId },
-          { onConflict: "notification_id,user_id" },
-        );
+      await apiFetch(`/api/v1/reconverse/notifications/${notificationId}/read`, { method: "POST" });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications", dealerId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const markAllRead = useMutation({
     mutationFn: async () => {
-      if (!user || !dealerId) return;
-      const unread = (query.data ?? []).filter((n) => !n.read_at);
-      if (!unread.length) return;
-      await supabase.from("notification_reads").upsert(
-        unread.map((n) => ({
-          notification_id: n.id,
-          user_id: user.id,
-          dealer_id: dealerId,
-        })),
-        { onConflict: "notification_id,user_id" },
-      );
+      await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/notifications/read-all`, { method: "POST" });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications", dealerId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
-  return { ...query, unreadCount, markRead, markAllRead };
+  return {
+    notifications,
+    unreadCount,
+    markRead: markRead.mutate,
+    markAllRead: markAllRead.mutate,
+    ...query,
+  };
 }

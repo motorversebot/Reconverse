@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch, changePassword as apiChangePassword, changeEmailRequest, logout as apiLogout } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,7 +95,8 @@ export default function SettingsPage() {
   const handleEmailChange = async () => {
     if (!newEmail.trim()) return;
     setEmailLoading(true);
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+    const result = await changeEmailRequest(newEmail.trim(), "");
+      const error = !result.ok ? new Error(result.error) : null;
     setEmailLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -116,16 +117,13 @@ export default function SettingsPage() {
     }
     setPasswordLoading(true);
     // Re-authenticate with current password
-    const { error: reAuthError } = await supabase.auth.signInWithPassword({
-      email: user?.email ?? "",
-      password: currentPassword,
-    });
-    if (reAuthError) {
+    const _pwRes = await apiChangePassword(currentPassword, newPassword);
+    if (!_pwRes.ok) {
       setPasswordLoading(false);
-      toast({ title: "Error", description: "Current password is incorrect.", variant: "destructive" });
+      toast({ title: "Error", description: _pwRes.error || "Current password is incorrect.", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const error = null;
     setPasswordLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -139,7 +137,7 @@ export default function SettingsPage() {
 
   const handleSignOutAll = async () => {
     setSignOutLoading(true);
-    await supabase.auth.signOut({ scope: "global" });
+    await apiLogout();
     setSignOutLoading(false);
     signOut();
   };

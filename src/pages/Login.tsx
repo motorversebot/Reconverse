@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { provisionDealerIfNeeded } from "@/lib/provisionDealer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,20 +10,14 @@ import { Helmet } from "react-helmet-async";
 
 async function resolveIdentifier(identifier: string): Promise<string | null> {
   try {
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resolve-identifier`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ identifier }),
-      }
-    );
+    const res = await apiFetch("/api/v1/reconverse/resolve-identifier", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.email ?? null;
+    return data?.data?.email ?? data?.email ?? null;
   } catch {
     return null;
   }
@@ -42,33 +36,30 @@ const Login = () => {
     setError("");
     setLoading(true);
 
-    const email = await resolveIdentifier(identifier.trim());
-    if (!email) {
-      setLoading(false);
-      setError("Invalid credentials");
-      return;
-    }
+    // Try to resolve username/email to canonical email
+    const email = await resolveIdentifier(identifier.trim()) || identifier.trim();
 
     const { error: signInError } = await signIn(email, password);
     setLoading(false);
     if (signInError) {
       setError("Invalid credentials");
-    } else {
-      // Check role and redirect accordingly
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("is_platform_admin")
-          .eq("id", session.user.id)
-          .single();
-        if (data?.is_platform_admin) {
-          navigate("/platform");
-        } else {
-          await provisionDealerIfNeeded();
-          navigate("/dealer");
-        }
+      return;
+    }
+    // signIn stores the user in AuthContext; useAuth will have the user now.
+    // We need to check the role from the API response. The user is available
+    // via getMe() which signIn already called. Re-read from auth context:
+    // Since signIn succeeded, we can fetch /me to decide where to route.
+    try {
+      const meRes = await apiFetch("/api/v1/auth/me");
+      const meJ = await meRes.json().catch(() => null);
+      if (meJ?.ok && meJ.data?.user?.is_platform_admin) {
+        navigate("/platform");
+      } else {
+        await provisionDealerIfNeeded();
+        navigate("/dealer");
       }
+    } catch {
+      navigate("/dealer");
     }
   };
 

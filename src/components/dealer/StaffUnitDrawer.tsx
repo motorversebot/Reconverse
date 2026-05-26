@@ -9,7 +9,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { X, ZoomIn, ImageOff, Clock } from "lucide-react";
 import { STAGE_META, type UnitStatus } from "@/lib/pipeline";
 import { hoursInStage, formatAgingDuration, agingColor, AGING_COLORS, AGING_BG } from "@/hooks/useStageAging";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
@@ -64,10 +64,8 @@ export default function StaffUnitDrawer({ unit, open, onOpenChange }: Props) {
       (async () => {
         const urls: Record<string, string> = {};
         for (const photo of photos) {
-          const { data } = await supabase.storage
-            .from("unit-photos")
-            .createSignedUrl(photo.file_path, 3600);
-          if (data?.signedUrl) urls[photo.id] = data.signedUrl;
+          const signedUrl = `/api/v1/reconverse/photos/blob/${encodeURIComponent(photo.file_path)}`;
+          urls[photo.id] = signedUrl;
         }
         setSignedUrls(urls);
       })();

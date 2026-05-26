@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch, rvPost, rvPatch, rvDelete, rvFetch } from "@/lib/api";
 
 // ── Types ──
+
 export interface Estimate {
   id: string;
   unit_id: string;
@@ -78,22 +79,50 @@ export interface WorkOrderItem {
   status: "open" | "done";
 }
 
+// ── Utility ──
+
+export function calculateEstimateTotals(
+  operations: EstimateOperation[],
+  estimate: Estimate | null,
+  filterApproved = false
+) {
+  let laborTotal = 0, partsTotal = 0, miscTotal = 0, subletTotal = 0, costTotal = 0, taxableTotal = 0;
+  for (const op of operations) {
+    for (const item of op.items || []) {
+      if (filterApproved && item.status !== "approved") continue;
+      const lineTotal = item.type === "labor" ? item.hours * item.labor_rate : item.qty * item.unit_price;
+      const lineCost = item.type === "labor" ? 0 : item.qty * item.unit_cost;
+      if (item.type === "labor") laborTotal += lineTotal;
+      else if (item.type === "part") partsTotal += lineTotal;
+      else if (item.type === "sublet") subletTotal += lineTotal;
+      else miscTotal += lineTotal;
+      costTotal += lineCost;
+      if (item.taxable) taxableTotal += lineTotal;
+    }
+  }
+  const subtotal = laborTotal + partsTotal + miscTotal + subletTotal;
+  const taxRate = estimate?.tax_rate_default ?? 0.08;
+  const taxTotal = taxableTotal * taxRate;
+  const shopSupplies = subtotal * (estimate?.shop_supplies_percent ?? 0);
+  let discountTotal = 0;
+  if (estimate?.discount_type === "percent") discountTotal = subtotal * (estimate.discount_value / 100);
+  else if (estimate?.discount_type === "amount") discountTotal = estimate.discount_value;
+  const grandTotal = subtotal + taxTotal + shopSupplies - discountTotal;
+  const gross = subtotal - costTotal;
+  const grossPercent = subtotal > 0 ? (gross / subtotal) * 100 : 0;
+  return { laborTotal, partsTotal, miscTotal, subletTotal, subtotal, taxTotal, shopSupplies, discountTotal, grandTotal, costTotal, gross, grossPercent };
+}
+
 // ── Queries ──
 
-export function useEstimate(unitId: string, dealerId: string) {
+export function useEstimate(unitId: string | undefined, dealerId: string | undefined) {
   return useQuery({
     queryKey: ["estimate", unitId],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("estimates") as any)
-        .select("*")
-        .eq("unit_id", unitId)
-        .eq("dealer_id", dealerId)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data as Estimate | null;
+      const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/estimate`);
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) return null;
+      return j.data as any;
     },
     enabled: !!unitId && !!dealerId,
   });
@@ -103,181 +132,108 @@ export function useEstimateOperations(estimateId: string | undefined) {
   return useQuery({
     queryKey: ["estimate-operations", estimateId],
     queryFn: async () => {
-      if (!estimateId) return [];
-      const { data: ops, error } = await (supabase
-        .from("estimate_operations") as any)
-        .select("*")
-        .eq("estimate_id", estimateId)
-        .order("sort_order");
-      if (error) throw error;
-
-      // Fetch items for all operations
-      const opIds = (ops || []).map((o: any) => o.id);
-      if (opIds.length === 0) return [];
-
-      const { data: items, error: itemsErr } = await (supabase
-        .from("estimate_items") as any)
-        .select("*")
-        .in("operation_id", opIds)
-        .order("sort_order");
-      if (itemsErr) throw itemsErr;
-
-      return (ops || []).map((op: any) => ({
-        ...op,
-        items: (items || []).filter((i: any) => i.operation_id === op.id),
-      })) as EstimateOperation[];
+      const res = await apiFetch(`/api/v1/reconverse/estimates/${estimateId}/operations`);
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) return [];
+      return j.data.operations as any[];
     },
     enabled: !!estimateId,
   });
 }
 
-export function useWorkOrder(unitId: string, dealerId: string) {
+export function useEstimateItems(operationId: string | undefined) {
   return useQuery({
-    queryKey: ["work-order", unitId],
+    queryKey: ["estimate-items", operationId],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("work_orders") as any)
-        .select("*")
-        .eq("unit_id", unitId)
-        .eq("dealer_id", dealerId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) return null;
-
-      const { data: items, error: itemsErr } = await (supabase
-        .from("work_order_items") as any)
-        .select("*")
-        .eq("work_order_id", data.id)
-        .order("created_at");
-      if (itemsErr) throw itemsErr;
-
-      return { ...data, items: items || [] } as WorkOrder;
+      const res = await apiFetch(`/api/v1/reconverse/operations/${operationId}/items`);
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) return [];
+      return j.data.items as any[];
     },
-    enabled: !!unitId && !!dealerId,
+    enabled: !!operationId,
   });
 }
-
-// ── Mutations ──
 
 export function useCreateEstimate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { unit_id: string; dealer_id: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await (supabase.from("estimates") as any)
-        .insert({ ...payload, created_by: user?.id })
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Estimate;
+      const result = await rvPost<{ estimate: any }>("/estimates", payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.estimate;
     },
-    onSuccess: (d) => {
-      qc.invalidateQueries({ queryKey: ["estimate", d.unit_id] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate"] }),
   });
 }
 
 export function useUpdateEstimate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...payload }: Partial<Estimate> & { id: string }) => {
-      const { data, error } = await (supabase.from("estimates") as any)
-        .update(payload)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Estimate;
+    mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
+      const result = await rvPatch<{ estimate: any }>(`/estimates/${id}`, payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.estimate;
     },
-    onSuccess: (d) => {
-      qc.invalidateQueries({ queryKey: ["estimate", d.unit_id] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate"] }),
   });
 }
 
 export function useCreateOperation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { estimate_id: string; dealer_id: string; name: string; category?: string; priority?: string; sort_order?: number }) => {
-      const { data, error } = await (supabase.from("estimate_operations") as any)
-        .insert(payload)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const result = await rvPost<{ operation: any }>("/estimate-operations", payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.operation;
     },
-    onSuccess: (d) => {
-      qc.invalidateQueries({ queryKey: ["estimate-operations", d.estimate_id] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate-operations"] }),
   });
 }
 
 export function useUpdateOperation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...payload }: any) => {
-      const { data, error } = await (supabase.from("estimate_operations") as any)
-        .update(payload)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
+      const result = await rvPatch<{ operation: any }>(`/estimate-operations/${id}`, payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.operation;
     },
-    onSuccess: (d) => {
-      qc.invalidateQueries({ queryKey: ["estimate-operations", d.estimate_id] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate-operations"] }),
   });
 }
 
 export function useDeleteOperation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, estimateId }: { id: string; estimateId: string }) => {
-      const { error } = await (supabase.from("estimate_operations") as any).delete().eq("id", id);
-      if (error) throw error;
-      return estimateId;
+    mutationFn: async (id: string) => {
+      const result = await rvDelete(`/estimate-operations/${id}`);
+      if (!result.ok) throw new Error(result.error);
     },
-    onSuccess: (estimateId) => {
-      qc.invalidateQueries({ queryKey: ["estimate-operations", estimateId] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate-operations"] }),
   });
 }
 
 export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: any) => {
-      const { data, error } = await (supabase.from("estimate_items") as any)
-        .insert(payload)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const result = await rvPost<{ item: any }>("/estimate-items", payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.item;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["estimate-operations"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate-items"] }),
   });
 }
 
 export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...payload }: any) => {
-      const { data, error } = await (supabase.from("estimate_items") as any)
-        .update(payload)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
+      const result = await rvPatch<{ item: any }>(`/estimate-items/${id}`, payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.item;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["estimate-operations"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate-items"] }),
   });
 }
 
@@ -285,135 +241,71 @@ export function useDeleteItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("estimate_items") as any).delete().eq("id", id);
-      if (error) throw error;
+      const result = await rvDelete(`/estimate-items/${id}`);
+      if (!result.ok) throw new Error(result.error);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["estimate-operations"] });
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate-items"] }),
+  });
+}
+
+export function useConvertToWorkOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { estimate_id: string; unit_id: string; dealer_id: string }) => {
+      const result = await rvPost<{ work_order: any }>("/work-orders", payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.work_order;
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["estimate"] }),
+  });
+}
+
+export function useWorkOrderItems(unitId: string | undefined, dealerId: string | undefined) {
+  return useQuery({
+    queryKey: ["work-order-items", unitId],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/work-order-items`);
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) return [];
+      return j.data.items as any[];
+    },
+    enabled: !!unitId && !!dealerId,
+  });
+}
+
+export function useWorkOrder(unitId: string, dealerId: string) {
+  return useQuery({
+    queryKey: ["work-order", unitId],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/work-order`);
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) return null;
+      return j.data as WorkOrder;
+    },
+    enabled: !!unitId && !!dealerId,
   });
 }
 
 export function useCreateWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: {
-      unit_id: string;
-      dealer_id: string;
-      source_estimate_id: string;
-      items: Omit<WorkOrderItem, "id" | "work_order_id" | "dealer_id">[];
-    }) => {
-      const { data: wo, error } = await (supabase.from("work_orders") as any)
-        .insert({
-          unit_id: payload.unit_id,
-          dealer_id: payload.dealer_id,
-          source_estimate_id: payload.source_estimate_id,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-
-      if (payload.items.length > 0) {
-        const woItems = payload.items.map((item) => ({
-          ...item,
-          work_order_id: wo.id,
-          dealer_id: payload.dealer_id,
-        }));
-        const { error: itemsErr } = await (supabase.from("work_order_items") as any).insert(woItems);
-        if (itemsErr) throw itemsErr;
-      }
-
-      return wo;
+    mutationFn: async (payload: { estimate_id: string; unit_id: string; dealer_id: string }) => {
+      const result = await rvPost<{ work_order: WorkOrder }>("/work-orders", payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.work_order;
     },
-    onSuccess: (d) => {
-      qc.invalidateQueries({ queryKey: ["work-order", d.unit_id] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["work-order"] }),
   });
 }
 
 export function useUpdateWorkOrderItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...payload }: any) => {
-      const { data, error } = await (supabase.from("work_order_items") as any)
-        .update(payload)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
+      const result = await rvPatch<{ item: WorkOrderItem }>(`/work-order-items/${id}`, payload);
+      if (!result.ok) throw new Error(result.error);
+      return result.data.item;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["work-order"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["work-order"] }),
   });
-}
-
-// ── Totals Calculator ──
-
-export function calculateEstimateTotals(
-  operations: EstimateOperation[],
-  estimate: Estimate | null,
-  filterApproved = false
-) {
-  let laborTotal = 0;
-  let partsTotal = 0;
-  let miscTotal = 0;
-  let subletTotal = 0;
-  let costTotal = 0;
-  let taxableTotal = 0;
-
-  for (const op of operations) {
-    for (const item of op.items || []) {
-      if (filterApproved && item.status !== "approved") continue;
-
-      const lineTotal =
-        item.type === "labor"
-          ? item.hours * item.labor_rate
-          : item.qty * item.unit_price;
-
-      const lineCost = item.type === "labor" ? 0 : item.qty * item.unit_cost;
-
-      if (item.type === "labor") laborTotal += lineTotal;
-      else if (item.type === "part") partsTotal += lineTotal;
-      else if (item.type === "sublet") subletTotal += lineTotal;
-      else miscTotal += lineTotal;
-
-      costTotal += lineCost;
-      if (item.taxable) taxableTotal += lineTotal;
-    }
-  }
-
-  const subtotal = laborTotal + partsTotal + miscTotal + subletTotal;
-  const taxRate = estimate?.tax_rate_default ?? 0.08;
-  const taxTotal = taxableTotal * taxRate;
-  const shopSupplies = subtotal * (estimate?.shop_supplies_percent ?? 0);
-
-  let discountTotal = 0;
-  if (estimate?.discount_type === "percent") {
-    discountTotal = subtotal * (estimate.discount_value / 100);
-  } else if (estimate?.discount_type === "amount") {
-    discountTotal = estimate.discount_value;
-  }
-
-  const grandTotal = subtotal + taxTotal + shopSupplies - discountTotal;
-  // Gross = revenue (all line totals) minus cost (all line costs)
-  const gross = subtotal - costTotal;
-  // Margin = gross / revenue * 100
-  const grossPercent = subtotal > 0 ? (gross / subtotal) * 100 : 0;
-
-  return {
-    laborTotal,
-    partsTotal,
-    miscTotal,
-    subletTotal,
-    subtotal,
-    taxTotal,
-    shopSupplies,
-    discountTotal,
-    grandTotal,
-    costTotal,
-    gross,
-    grossPercent,
-  };
 }

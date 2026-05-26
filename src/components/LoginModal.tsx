@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { provisionDealerIfNeeded } from "@/lib/provisionDealer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,20 +16,14 @@ interface LoginModalProps {
 
 async function resolveIdentifier(identifier: string): Promise<string | null> {
   try {
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resolve-identifier`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ identifier }),
-      }
-    );
+    const res = await apiFetch("/api/v1/reconverse/resolve-identifier", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.email ?? null;
+    return data?.data?.email ?? data?.email ?? null;
   } catch {
     return null;
   }
@@ -48,13 +42,7 @@ const LoginModal = ({ open, onOpenChange, onSwitchToSignup }: LoginModalProps) =
     setError("");
     setLoading(true);
 
-    // Resolve identifier to email
-    const email = await resolveIdentifier(identifier.trim());
-    if (!email) {
-      setLoading(false);
-      setError("Invalid credentials");
-      return;
-    }
+    const email = await resolveIdentifier(identifier.trim()) || identifier.trim();
 
     const { error: signInError } = await signIn(email, password);
     if (signInError) {
@@ -66,42 +54,39 @@ const LoginModal = ({ open, onOpenChange, onSwitchToSignup }: LoginModalProps) =
     setLoading(false);
     onOpenChange(false);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("is_platform_admin")
-        .eq("id", session.user.id)
-        .single();
-      if (data?.is_platform_admin) {
+    try {
+      const meRes = await apiFetch("/api/v1/auth/me");
+      const meJ = await meRes.json().catch(() => null);
+      if (meJ?.ok && meJ.data?.user?.is_platform_admin) {
         navigate("/platform");
       } else {
-        // Auto-provision dealer for self-service signups
         await provisionDealerIfNeeded();
         navigate("/dealer");
       }
+    } catch {
+      navigate("/dealer");
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-panel-strong border-border bg-[hsl(var(--glass-bg)/0.85)] backdrop-blur-2xl sm:max-w-md p-0 gap-0 overflow-hidden [&>button]:hidden">
-        {/* Close button */}
+      <DialogContent className="glass-panel-strong border-border sm:max-w-md p-0 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">Sign in to Reconverse</DialogTitle>
         <button
           onClick={() => onOpenChange(false)}
-          aria-label="Close login dialog"
-          className="absolute top-4 right-4 z-10 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--glass-border)/0.1)] transition-colors"
+          className="absolute right-4 top-4 z-10 p-1 rounded-md text-muted-foreground/60 hover:text-foreground transition-colors"
         >
-          <X className="h-4 w-4" aria-hidden="true" />
+          <X className="h-4 w-4" />
         </button>
 
-        <div className="p-8">
-          <DialogTitle className="text-xl font-bold text-foreground text-center mb-1">
-            Platform Login
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            Sign in to your account
-          </p>
+        <div className="p-6 sm:p-8">
+          <div className="text-center mb-6">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-lg mx-auto mb-3">
+              R
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Welcome back</h2>
+            <p className="text-sm text-muted-foreground mt-1">Sign in to Reconverse</p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -114,6 +99,7 @@ const LoginModal = ({ open, onOpenChange, onSwitchToSignup }: LoginModalProps) =
                 placeholder="you@example.com or username"
                 className="bg-[hsl(var(--glass-bg)/0.5)] border-[hsl(var(--glass-border)/0.1)]"
                 required
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
@@ -135,20 +121,12 @@ const LoginModal = ({ open, onOpenChange, onSwitchToSignup }: LoginModalProps) =
               </p>
             )}
 
-            <Button
-              type="submit"
-              variant="hero"
-              className="w-full"
-              disabled={loading}
-            >
+            <Button type="submit" variant="hero" className="w-full" disabled={loading}>
               {loading ? "Signing in…" : "Sign In"}
             </Button>
 
             <div className="text-center">
-              <button
-                type="button"
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
+              <button type="button" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Forgot password?
               </button>
             </div>
@@ -158,10 +136,7 @@ const LoginModal = ({ open, onOpenChange, onSwitchToSignup }: LoginModalProps) =
                 Don't have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => {
-                    onOpenChange(false);
-                    setTimeout(() => onSwitchToSignup(), 200);
-                  }}
+                  onClick={() => { onOpenChange(false); setTimeout(() => onSwitchToSignup(), 200); }}
                   className="text-primary font-medium hover:underline"
                 >
                   Sign up

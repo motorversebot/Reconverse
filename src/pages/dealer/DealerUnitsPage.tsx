@@ -14,7 +14,7 @@ import { useCreateUnit, useUpdateUnit, useRestoreUnit } from "@/hooks/useDealerA
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { isStaffOnly } from "@/lib/permissions";
 import StaffUnitDrawer from "@/components/dealer/StaffUnitDrawer";
 
@@ -186,21 +186,15 @@ export default function DealerUnitsPage() {
     setDecodedRaw(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vin-decode`,
-        {
+      // VIN decode via API proxy
+        const vinRes = await apiFetch("/api/v1/reconverse/vin-decode", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ vin }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vin: vin.trim().toUpperCase() }),
+        });
+
+      const data = await vinRes.json();
+      if (!vinRes.ok) {
         setDecodeError(data.error || "Failed to decode VIN");
         return;
       }

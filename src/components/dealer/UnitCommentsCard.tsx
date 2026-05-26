@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MessageSquarePlus, MessageCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -45,13 +45,13 @@ export default function UnitCommentsCard({ unitId, dealerId }: Props) {
 
   const addComment = useMutation({
     mutationFn: async (text: string) => {
-      const { error } = await supabase.from("unit_comments" as any).insert({
-        unit_id: unitId,
-        dealer_id: dealerId,
-        user_id: user!.id,
-        comment: text,
-      } as any);
-      if (error) throw error;
+      const _res = await apiFetch("/api/v1/reconverse/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unit_id: unitId, dealer_id: dealerId, comment: text }),
+      });
+      const _j = await _res.json().catch(() => null);
+      if (!_res.ok || !_j?.ok) throw new Error(_j?.error || "Failed to add comment");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unit-comments", unitId] });

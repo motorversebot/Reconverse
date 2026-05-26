@@ -18,8 +18,7 @@ import {
   CheckCircle2,
   Github,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { provisionDealerIfNeeded } from "@/lib/provisionDealer";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -455,37 +454,24 @@ function LandingFooter() {
 /* ── Page composition ── */
 const Index = () => {
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+  const { user, isPlatformAdmin, loading } = useAuth();
 
   useEffect(() => {
-    // Auth-aware redirect: logged-in users go straight to their workspace
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("is_platform_admin")
-          .eq("id", session.user.id)
-          .single();
+    if (loading) return;
+    if (user) {
+      navigate(isPlatformAdmin ? "/platform" : "/dealer", { replace: true });
+    }
+  }, [user, isPlatformAdmin, loading, navigate]);
 
-        if (data?.is_platform_admin) {
-          navigate("/platform", { replace: true });
-          return;
-        }
-        await provisionDealerIfNeeded();
-        navigate("/dealer", { replace: true });
-        return;
-      }
-      setReady(true);
-    });
-  }, [navigate]);
-
-  if (!ready) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-muted-foreground animate-pulse">Loading…</div>
       </div>
     );
   }
+
+  if (user) return null; // navigating away
 
   return (
     <div className="min-h-screen bg-background text-foreground">

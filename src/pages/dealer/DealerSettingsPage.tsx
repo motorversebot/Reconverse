@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch, changePassword as apiChangePassword, changeEmailRequest, logout as apiLogout } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,12 +50,9 @@ export default function DealerSettingsPage() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("profiles")
-      .select("full_name, username")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
+    apiFetch("/api/v1/auth/me")
+      .then((r) => r.json())
+      .then((j) => { const data = j?.ok ? j.data.user : null;
         if (data) {
           setDisplayName(data.full_name ?? "");
           setUsername((data as any).username ?? "");
@@ -69,7 +66,13 @@ export default function DealerSettingsPage() {
     setProfileLoading(true);
     const updateData: Record<string, string> = { full_name: displayName.trim() };
     if (!usernameReadOnly && username.trim()) updateData.username = username.trim();
-    const { error } = await supabase.from("profiles").update(updateData).eq("id", user.id);
+    const res = await apiFetch("/api/v1/reconverse/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+      const j = await res.json().catch(() => null);
+      const error = (!res.ok || !j?.ok) ? new Error(j?.error || "Update failed") : null;
     setProfileLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -82,7 +85,8 @@ export default function DealerSettingsPage() {
   const handleEmailChange = async () => {
     if (!newEmail.trim()) return;
     setEmailLoading(true);
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+    const result = await changeEmailRequest(newEmail.trim(), "");
+      const error = !result.ok ? new Error(result.error) : null;
     setEmailLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -102,16 +106,13 @@ export default function DealerSettingsPage() {
       return;
     }
     setPasswordLoading(true);
-    const { error: reAuthError } = await supabase.auth.signInWithPassword({
-      email: user?.email ?? "",
-      password: currentPassword,
-    });
-    if (reAuthError) {
+    const pwResult = await apiChangePassword(currentPassword, newPassword);
+    if (!pwResult.ok) {
       setPasswordLoading(false);
-      toast({ title: "Error", description: "Current password is incorrect.", variant: "destructive" });
+      toast({ title: "Error", description: pwResult.error || "Current password is incorrect.", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const error = null;
     setPasswordLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -125,7 +126,7 @@ export default function DealerSettingsPage() {
 
   const handleSignOutAll = async () => {
     setSignOutLoading(true);
-    await supabase.auth.signOut({ scope: "global" });
+    await apiLogout();
     setSignOutLoading(false);
     signOut();
   };

@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2, XCircle, AlertTriangle, Circle,
@@ -189,22 +189,20 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
 
   const upsert = useMutation({
     mutationFn: async (item: { category: string; item_name: string; status: ItemStatus; notes?: string | null }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase
-        .from("unit_inspection_items" as any)
-        .upsert(
-          {
-            unit_id: unitId,
-            dealer_id: dealerId,
-            category: item.category,
-            item_name: item.item_name,
-            status: item.status,
-            notes: item.notes ?? null,
-            inspected_by: user?.id ?? null,
-          } as any,
-          { onConflict: "unit_id,category,item_name" }
-        );
-      if (error) throw error;
+      const _upsertRes = await apiFetch("/api/v1/reconverse/inspection-items/upsert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          unit_id: unitId,
+          dealer_id: dealerId,
+          category: item.category,
+          item_name: item.item_name,
+          status: item.status,
+          notes: item.notes ?? null,
+        }),
+      });
+      const _upsertJ = await _upsertRes.json().catch(() => null);
+      if (!_upsertRes.ok || !_upsertJ?.ok) throw new Error(_upsertJ?.error || "Failed to save");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inspection-items", unitId] });
@@ -216,7 +214,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
 
   const bulkUpsert = useMutation({
     mutationFn: async (items: { category: string; item_name: string; status: ItemStatus; notes?: string | null }[]) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // auth handled by API
       const payloads = items.map(item => ({
         unit_id: unitId,
         dealer_id: dealerId,
@@ -226,10 +224,13 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
         notes: item.notes ?? null,
         inspected_by: user?.id ?? null,
       }));
-      const { error } = await supabase
-        .from("unit_inspection_items" as any)
-        .upsert(payloads as any[], { onConflict: "unit_id,category,item_name" });
-      if (error) throw error;
+      const _bulkRes = await apiFetch("/api/v1/reconverse/inspection-items/upsert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: payloads }),
+      });
+      const _bulkJ = await _bulkRes.json().catch(() => null);
+      if (!_bulkRes.ok || !_bulkJ?.ok) throw new Error(_bulkJ?.error || "Failed to save");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inspection-items", unitId] });

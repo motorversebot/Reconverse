@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
 import { useArchiveUnit, useUpdateUnit } from "@/hooks/useDealerActions";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import StageProgressBar from "@/components/dealer/StageProgressBar";
 import { hoursInStage, formatAgingDuration, agingColor, AGING_COLORS, AGING_BG } from "@/hooks/useStageAging";
@@ -206,19 +206,10 @@ export default function UnitDetailPage() {
   const handleExportPdf = async () => {
     setExporting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-unit-pdf`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ unit_id: unit.id }),
-        }
-      );
+      const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/export-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Export failed");
 

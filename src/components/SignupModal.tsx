@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,17 +32,20 @@ const SignupModal = ({ open, onOpenChange, onSwitchToLogin }: SignupModalProps) 
       return;
     }
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: {
-          full_name: fullName.trim(),
-          shop_name: shopName.trim(),
-        },
-      },
+    const signUpRes = await apiFetch("/api/v1/reconverse/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        full_name: fullName.trim(),
+        shop_name: shopName.trim(),
+      }),
     });
+    const signUpJ = await signUpRes.json().catch(() => null);
+    const signUpError = (!signUpRes.ok || !signUpJ?.ok)
+      ? new Error(signUpJ?.error || "Signup failed")
+      : null;
 
     setLoading(false);
 

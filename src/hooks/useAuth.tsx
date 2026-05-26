@@ -1,10 +1,17 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  RVUser,
+  login as apiLogin,
+  logout as apiLogout,
+  getMe,
+  getAccess,
+  getRefresh,
+  setOnAuthLost,
+} from "@/lib/api";
 
 interface AuthContext {
-  session: Session | null;
-  user: User | null;
+  session: { user: RVUser } | null;
+  user: RVUser | null;
   isPlatformAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -14,56 +21,42 @@ interface AuthContext {
 const AuthContext = createContext<AuthContext | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [user, setUser] = useState<RVUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const checkPlatformAdmin = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("is_platform_admin")
-      .eq("id", userId)
-      .single();
-    setIsPlatformAdmin(data?.is_platform_admin === true);
-  };
-
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock
-          setTimeout(() => checkPlatformAdmin(session.user.id), 0);
-        } else {
-          setIsPlatformAdmin(false);
-        }
-        setLoading(false);
-      }
-    );
+    setOnAuthLost(() => { setUser(null); });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        checkPlatformAdmin(session.user.id);
+    async function bootstrap() {
+      if (!getAccess() && !getRefresh()) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const me = await getMe();
+        setUser(me);
+      } catch {
+        setUser(null);
       }
       setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    bootstrap();
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error as Error | null };
+    const result = await apiLogin(email, password);
+    if (!result.ok) return { error: new Error(result.error) };
+    setUser(result.user);
+    return { error: null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setIsPlatformAdmin(false);
+    await apiLogout();
+    setUser(null);
   };
+
+  const session = user ? { user } : null;
+  const isPlatformAdmin = user?.is_platform_admin === true;
 
   return (
     <AuthContext.Provider value={{ session, user, isPlatformAdmin, loading, signIn, signOut }}>

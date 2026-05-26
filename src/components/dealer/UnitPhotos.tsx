@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Upload, Trash2, Loader2, ImagePlus, X, ZoomIn,
@@ -77,11 +77,9 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
   const generateSignedUrls = async (photoList: UnitPhoto[]) => {
     const urls: Record<string, string> = {};
     for (const photo of photoList) {
-      const { data } = await supabase.storage
-        .from("unit-photos")
-        .createSignedUrl(photo.file_path, 3600); // 1 hour expiry
-      if (data?.signedUrl) {
-        urls[photo.id] = data.signedUrl;
+      const signedUrl = `/api/v1/reconverse/photos/blob/${encodeURIComponent(photo.file_path)}`;
+      {
+        urls[photo.id] = signedUrl;
       }
     }
     setSignedUrls(urls);
@@ -105,7 +103,7 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
     setUploading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      
 
       for (const file of Array.from(files)) {
         if (!file.type.startsWith("image/")) {
@@ -120,9 +118,12 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
         const ext = file.name.split(".").pop() || "jpg";
         const filePath = `${dealerId}/${unitId}/${crypto.randomUUID()}.${ext}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("unit-photos")
-          .upload(filePath, file, { contentType: file.type });
+        const uploadForm = new FormData();
+        uploadForm.append("file", file, { contentType: file.type });
+        uploadForm.append("path", filePath);
+        const uploadRes = await apiFetch("/api/v1/reconverse/photos/upload", { method: "POST", body: uploadForm });
+        const uploadJ = await uploadRes.json().catch(() => null);
+        const uploadError = (!uploadRes.ok || !uploadJ?.ok) ? new Error(uploadJ?.error || "Upload failed") : null;
 
         if (uploadError) {
           toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
@@ -130,16 +131,20 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
         }
 
         // Save metadata
-        const { error: insertError } = await supabase
-          .from("unit_photos" as any)
-          .insert({
+        const insertRes = await apiFetch("/api/v1/reconverse/photos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             unit_id: unitId,
             dealer_id: dealerId,
             file_path: filePath,
             file_name: file.name,
             category: selectedCategory,
             uploaded_by: user?.id ?? null,
-          } as any);
+          } as any),
+        });
+        const insertJ = await insertRes.json().catch(() => null);
+        const insertError = (!insertRes.ok || !insertJ?.ok) ? new Error(insertJ?.error || "Failed") : null;
 
         if (insertError) {
           toast({ title: "Error saving photo", description: insertError.message, variant: "destructive" });
@@ -159,15 +164,12 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
   // Delete
   const deleteMutation = useMutation({
     mutationFn: async (photo: UnitPhoto) => {
-      const { error: storageError } = await supabase.storage
-        .from("unit-photos")
-        .remove([photo.file_path]);
+      const delRes = await apiFetch(`/api/v1/reconverse/photos/\${photo.id}`, { method: "DELETE" });
+      const delJ = await delRes.json().catch(() => null);
+      const storageError = (!delRes.ok || !delJ?.ok) ? new Error(delJ?.error || "Delete failed") : null;
       if (storageError) throw storageError;
 
-      const { error: dbError } = await supabase
-        .from("unit_photos" as any)
-        .delete()
-        .eq("id", photo.id);
+      const dbError = null; // handled by API delete above
       if (dbError) throw dbError;
     },
     onSuccess: () => {
