@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Car, Users, Settings, LogOut, ArrowLeft,
   ChevronLeft, ChevronRight, Menu, BarChart3,
   ClipboardCheck, Calculator, ThumbsUp, Wrench, ShieldCheck, Tag,
+  Layers, Home, Bell
 } from "lucide-react";
 import { NotificationBell } from "@/components/dealer/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -46,20 +47,20 @@ function SidebarNavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          "group relative flex items-center gap-3 rounded-xl text-[13px] font-medium transition-all duration-200",
-          collapsed ? "justify-center px-3 py-2.5" : "px-3.5 py-2.5",
+          "group relative flex items-center gap-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300",
+          collapsed ? "justify-center px-3 py-3" : "px-3.5 py-3",
           isActive
-            ? "bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.08)] text-white/90"
-            : "text-white/40 hover:text-white/70 hover:bg-[rgba(255,255,255,0.03)] border border-transparent"
+            ? "bg-primary/10 border border-primary/20 text-foreground shadow-[0_0_15px_-3px_hsl(var(--primary)/0.15)]"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/10 border border-transparent"
         )
       }
     >
       {({ isActive }: { isActive: boolean }) => (
         <>
           {isActive && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary" />
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
           )}
-          <Icon className={cn("shrink-0 h-[18px] w-[18px]", isActive ? "text-white/80" : "text-white/40")} />
+          <Icon className={cn("shrink-0 h-[17px] w-[17px] transition-transform group-hover:scale-105", isActive ? "text-primary" : "text-muted-foreground/60 group-hover:text-foreground")} />
           {!collapsed && <span>{label}</span>}
         </>
       )}
@@ -70,7 +71,9 @@ function SidebarNavItem({
     return (
       <Tooltip>
         <TooltipTrigger asChild>{inner}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={12}>{label}</TooltipContent>
+        <TooltipContent side="right" sideOffset={12} className="bg-popover border border-border/80 text-xs font-semibold text-foreground px-3 py-1.5 shadow-xl">
+          {label}
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -91,39 +94,40 @@ function SidebarContent({
 
   return (
     <div
-      className="flex h-full flex-col sidebar-chrome border-0"
+      className="flex h-full flex-col border-r border-border/20"
       style={{
-        background: "linear-gradient(180deg, #111315 0%, #15181c 100%)",
-        backdropFilter: "blur(24px)",
+        background: "linear-gradient(180deg, hsl(var(--sidebar-background)) 0%, hsl(224 45% 3% / 0.8) 100%)",
       }}
     >
       {/* Brand header */}
       <div className={cn(
         "flex flex-col items-center",
         collapsed ? "px-2 py-5" : "px-5 py-6",
-        "border-b border-[rgba(255,255,255,0.05)]"
+        "border-b border-border/10"
       )}>
-        <div className={cn(
-          "flex items-center justify-center font-black text-white/80 tracking-tight",
-          collapsed ? "text-xl" : "text-3xl"
-        )}>
-          M
-        </div>
+        <Link to="/" className="flex items-center justify-center gap-2 group">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-base shadow-[0_0_20px_hsl(var(--primary)/0.25)] transition-transform group-hover:scale-105">
+            R
+          </div>
+          {!collapsed && (
+            <span className="font-extrabold tracking-tight text-foreground text-base group-hover:text-primary transition-colors">Reconverse</span>
+          )}
+        </Link>
         {!collapsed && (
-          <div className="mt-2 text-center">
-            <p className="text-[12px] font-medium text-primary/80 truncate max-w-[180px]">
-              {membership?.dealers?.name ?? "Dealer"}
+          <div className="mt-3.5 px-3 py-1 bg-primary/5 rounded-full border border-primary/10 max-w-[190px] w-full text-center">
+            <p className="text-[10px] font-bold text-primary/80 uppercase tracking-wider truncate">
+              {membership?.dealers?.name ?? "Dealer Portal"}
             </p>
           </div>
         )}
       </div>
 
       {/* Nav sections */}
-      <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-3.5 py-6 space-y-6">
         {/* Workspace */}
         <div>
           {!collapsed && (
-            <p className="px-3.5 mb-2.5 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25">
+            <p className="px-3.5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
               Workspace
             </p>
           )}
@@ -138,7 +142,7 @@ function SidebarContent({
         {showReconLane && (
           <div>
             {!collapsed && (
-              <p className="px-3.5 mb-2.5 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25">
+              <p className="px-3.5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
                 Recon Lane
               </p>
             )}
@@ -154,8 +158,8 @@ function SidebarContent({
         {showAdmin && (
           <div>
             {!collapsed && (
-              <p className="px-3.5 mb-2.5 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/25">
-                Admin
+              <p className="px-3.5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
+                Admin Settings
               </p>
             )}
             <div className="space-y-0.5">
@@ -168,28 +172,28 @@ function SidebarContent({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-[rgba(255,255,255,0.05)] p-3 space-y-1">
+      <div className="border-t border-border/10 p-3.5 space-y-1 bg-black/10">
         {isPlatformAdmin && (
           <NavLink
             to="/platform"
             className={cn(
-              "flex items-center gap-2 rounded-lg text-xs text-white/35 hover:text-white/60 hover:bg-[rgba(255,255,255,0.03)] transition-colors",
-              collapsed ? "justify-center px-2 py-2" : "px-3 py-2"
+              "flex items-center gap-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-muted/10 transition-colors",
+              collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"
             )}
           >
             <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-            {!collapsed && <span>Back to Platform</span>}
+            {!collapsed && <span className="font-semibold">Platform God Mode</span>}
           </NavLink>
         )}
         {!collapsed && (
-          <p className="text-[11px] text-white/30 truncate px-3">{user?.email}</p>
+          <p className="text-[10px] text-muted-foreground/50 truncate px-3 font-mono">{user?.email}</p>
         )}
         <Button
           variant="ghost"
           size="sm"
           className={cn(
-            "w-full gap-2 text-white/30 hover:text-red-400 hover:bg-[rgba(255,255,255,0.03)]",
-            collapsed ? "justify-center px-0" : "justify-start"
+            "w-full gap-2 text-muted-foreground/70 hover:text-red-400 hover:bg-red-500/5 rounded-xl font-medium",
+            collapsed ? "justify-center px-0" : "justify-start px-3"
           )}
           onClick={signOut}
         >
@@ -201,13 +205,41 @@ function SidebarContent({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-center text-white/20 hover:text-white/50 hover:bg-[rgba(255,255,255,0.03)] mt-1"
+            className="w-full justify-center text-muted-foreground/30 hover:text-foreground hover:bg-muted/10 mt-1.5 rounded-xl"
             onClick={onCollapse}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+/* Breadcrumbs generator based on pathname */
+function Breadcrumbs() {
+  const location = useLocation();
+  const pathnames = location.pathname.split("/").filter(x => x);
+
+  return (
+    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground/60 select-none">
+      <Home className="h-3 w-3" />
+      {pathnames.map((val, idx) => {
+        const routeTo = `/${pathnames.slice(0, idx + 1).join("/")}`;
+        const isLast = idx === pathnames.length - 1;
+        const formattedLabel = val.charAt(0).toUpperCase() + val.slice(1).replace("-", " ");
+        
+        return (
+          <div key={routeTo} className="flex items-center gap-1.5">
+            <span className="text-muted-foreground/30">/</span>
+            {isLast ? (
+              <span className="text-foreground/80 font-bold">{formattedLabel}</span>
+            ) : (
+              <NavLink to={routeTo} className="hover:text-foreground transition-colors">{formattedLabel}</NavLink>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -219,45 +251,51 @@ export function DealerLayout() {
 
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border/30 bg-background">
+      <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 selection:text-primary">
+        <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 border-b border-border/30 bg-background/60 backdrop-blur-xl">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0">
+              <Button variant="ghost" size="icon" className="shrink-0 rounded-xl hover:bg-muted/10">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-72 p-0 border-r border-[rgba(255,255,255,0.06)]"
-              style={{ background: "linear-gradient(180deg, #111315 0%, #15181c 100%)" }}
+              className="w-72 p-0 border-r border-border/10"
             >
               <SidebarContent collapsed={false} showCollapseBtn={false} />
             </SheetContent>
           </Sheet>
-          <span className="font-bold text-lg text-foreground tracking-tight">R</span>
-          <span className="font-semibold text-sm text-foreground/60 flex-1">Reconverse</span>
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-xs shadow-[0_0_12px_hsl(var(--primary)/0.25)]">
+            R
+          </div>
+          <span className="font-extrabold text-sm text-foreground flex-1 tracking-tight">Reconverse</span>
           <NotificationBell />
         </header>
         <main className="flex-1 overflow-auto">
-          <div className="p-3 max-w-7xl mx-auto"><Outlet /></div>
+          <div className="p-4 max-w-7xl mx-auto"><Outlet /></div>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex selection:bg-primary/20 selection:text-primary">
       <aside className={cn("shrink-0 transition-all duration-300 ease-in-out", collapsed ? "w-[72px]" : "w-60")}>
         <div className="sticky top-0 h-screen">
           <SidebarContent collapsed={collapsed} onCollapse={() => setCollapsed((c) => !c)} showCollapseBtn />
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">
-        <div className="sticky top-0 z-10 flex justify-end px-5 py-2 bg-background/80 backdrop-blur border-b border-border/30">
-          <NotificationBell />
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="h-14 shrink-0 flex items-center justify-between px-6 bg-background/55 backdrop-blur-xl border-b border-border/20 z-20">
+          <Breadcrumbs />
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto bg-background/40">
+          <div className="p-6 max-w-7xl mx-auto"><Outlet /></div>
         </div>
-        <div className="p-5 max-w-7xl mx-auto"><Outlet /></div>
       </main>
     </div>
   );
