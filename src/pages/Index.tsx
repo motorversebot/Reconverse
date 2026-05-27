@@ -17,83 +17,22 @@ import {
   Gauge,
   CheckCircle2,
   Lock,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/* ── Pipeline stages used in the interactive centerpiece ── */
+/* ── Pipeline stages used in the centerpiece ── */
 const STAGES = [
-  { 
-    id: "intake", 
-    label: "Intake", 
-    icon: Car, 
-    tint: "text-sky-400", 
-    dot: "bg-sky-400",
-    description: "Scan VIN to decode vehicle specs instantly, assign stock numbers, and ingest the vehicle into the lot workflow.",
-    role: "Intake Agent",
-    metric: "12 units"
-  },
-  { 
-    id: "mpi", 
-    label: "MPI", 
-    icon: ClipboardCheck, 
-    tint: "text-amber-400", 
-    dot: "bg-amber-400",
-    description: "Execute a mobile-friendly Multi-Point Inspection. Grade items as pass, fail, or monitor with notes & photos.",
-    role: "Technician",
-    metric: "8 units"
-  },
-  { 
-    id: "estimate", 
-    label: "Estimate", 
-    icon: Calculator, 
-    tint: "text-blue-400", 
-    dot: "bg-blue-400",
-    description: "Draft comprehensive estimate sheets containing labor rates, part costs, and sublet itemizations automatically.",
-    role: "Service Advisor",
-    metric: "5 units"
-  },
-  { 
-    id: "approval", 
-    label: "Approval", 
-    icon: ThumbsUp, 
-    tint: "text-orange-400", 
-    dot: "bg-orange-400",
-    description: "Dealers or owners approve or decline repairs item-by-item, moving approved work directly to the service lane.",
-    role: "Dealer Manager",
-    metric: "3 units"
-  },
-  { 
-    id: "repair", 
-    label: "Repair", 
-    icon: Wrench, 
-    tint: "text-purple-400", 
-    dot: "bg-purple-400",
-    description: "Service technicians address approved work orders and track status adjustments in real time.",
-    role: "Mechanic",
-    metric: "6 units"
-  },
-  { 
-    id: "qc", 
-    label: "QC", 
-    icon: ShieldCheck, 
-    tint: "text-teal-400", 
-    dot: "bg-teal-400",
-    description: "A final verification checklist confirms that all safety and cosmetic standards are fully resolved before listing.",
-    role: "QC Inspector",
-    metric: "2 units"
-  },
-  { 
-    id: "ready", 
-    label: "Ready", 
-    icon: Tag, 
-    tint: "text-emerald-400", 
-    dot: "bg-emerald-400",
-    description: "Flagged ready for sale, complete with pricing and inspection certificates, ready to print lot guides.",
-    role: "Sales Admin",
-    metric: "9 units"
-  },
+  { id: "intake",   label: "Intake",     icon: Car,             tint: "text-cyan-400",     dot: "bg-cyan-400" },
+  { id: "mpi",      label: "MPI",        icon: ClipboardCheck,  tint: "text-purple-400",   dot: "bg-purple-400" },
+  { id: "estimate", label: "Estimate",   icon: Calculator,      tint: "text-pink-400",     dot: "bg-pink-400" },
+  { id: "approval", label: "Approval",   icon: ThumbsUp,        tint: "text-amber-400",    dot: "bg-amber-400" },
+  { id: "repair",   label: "Repair",     icon: Wrench,          tint: "text-indigo-400",   dot: "bg-indigo-400" },
+  { id: "qc",       label: "QC",         icon: ShieldCheck,     tint: "text-teal-400",     dot: "bg-teal-400" },
+  { id: "ready",    label: "Ready",      icon: Tag,             tint: "text-emerald-400",  dot: "bg-emerald-400" },
 ] as const;
 
 /* ── Top navigation ── */
@@ -102,11 +41,11 @@ function Nav() {
     <nav className="sticky top-0 z-40 backdrop-blur-xl bg-background/50 border-b border-border/30">
       <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-base shadow-[0_0_20px_hsl(var(--primary)/0.25)] group-hover:scale-105 transition-transform">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center text-foreground font-black text-base shadow-[0_0_20px_rgba(185,90,250,0.25)] group-hover:scale-105 transition-transform">
             R
           </div>
           <span className="font-extrabold tracking-tight text-foreground text-lg">Reconverse</span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70 bg-primary/10 px-2 py-0.5 rounded-full ml-1">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-accent bg-accent/10 px-2 py-0.5 rounded-full ml-1">
             Rebrand
           </span>
         </Link>
@@ -130,15 +69,84 @@ function Nav() {
   );
 }
 
-/* ── Hero ── */
-function Hero({ activeStage, setActiveStage }: { activeStage: string; setActiveStage: (id: string) => void }) {
+/* ── Interactive ROI Savings Calculator ── */
+function ROICalculator() {
+  const [volume, setVolume] = useState<number>(30);
+  const [daysSaved, setDaysSaved] = useState<number>(3);
+  const holdingCost = 40; // $40 per day holding cost
+
+  const monthlySavings = volume * daysSaved * holdingCost;
+  const yearlySavings = monthlySavings * 12;
+
   return (
-    <section className="relative bg-gradient-hero overflow-hidden pb-12">
-      {/* Decorative backdrop glow meshes */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none animate-pulse-glow" />
-      <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-accent/80 rounded-full blur-[100px] pointer-events-none opacity-20" />
+    <div className="glass-panel-strong p-6 sm:p-8 max-w-md w-full relative overflow-hidden border-primary/20">
+      <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
       
-      {/* Grid pattern */}
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/40">
+        <TrendingUp className="h-5 w-5 text-accent" />
+        <h3 className="text-base font-bold text-foreground">Recon Savings Calculator</h3>
+      </div>
+
+      <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
+        See how much capital you recover by accelerating key-to-key cycle times.
+      </p>
+
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-semibold">
+            <span className="text-muted-foreground/80">Monthly Lot Volume</span>
+            <span className="text-foreground font-bold">{volume} units</span>
+          </div>
+          <input
+            type="range"
+            min="5"
+            max="150"
+            step="5"
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="w-full h-1 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-semibold">
+            <span className="text-muted-foreground/80">Recon Days Reduced</span>
+            <span className="text-foreground font-bold">{daysSaved} days</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="7"
+            step="1"
+            value={daysSaved}
+            onChange={(e) => setDaysSaved(Number(e.target.value))}
+            className="w-full h-1 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+          />
+        </div>
+
+        <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 text-center mt-6">
+          <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Monthly Saved Holding Costs</span>
+          <p className="text-3xl font-black text-foreground tracking-tight mt-1.5 tabular-nums text-gradient-accent">
+            ${monthlySavings.toLocaleString()}
+          </p>
+          <span className="text-[10px] text-muted-foreground/50 mt-1 block">
+            (${yearlySavings.toLocaleString()} annually at ${holdingCost}/d holding cost)
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Hero ── */
+function Hero() {
+  return (
+    <section className="relative bg-gradient-hero overflow-hidden pb-16">
+      {/* Mesh glow effects */}
+      <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-1/2 right-1/4 w-[300px] h-[300px] bg-accent/80 rounded-full blur-[120px] pointer-events-none opacity-10" />
+
+      {/* Grid pattern overlay */}
       <div
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
@@ -148,54 +156,49 @@ function Hero({ activeStage, setActiveStage }: { activeStage: string; setActiveS
         }}
       />
 
-      <div className="relative max-w-6xl mx-auto px-5 sm:px-8 pt-20 pb-16 sm:pt-28 sm:pb-24">
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-          {/* Eyebrow badge */}
-          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-primary bg-primary/10 border border-primary/20 animate-fade-in">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Reconditioning SaaS for Modern Rooftops
-          </span>
+      <div className="relative max-w-6xl mx-auto px-5 sm:px-8 pt-16 pb-12 sm:pt-24 sm:pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-12 items-center">
+          
+          {/* Left Hero Column */}
+          <div className="flex flex-col items-start text-left max-w-xl">
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-accent bg-accent/10 border border-accent/20 mb-6">
+              <Sparkles className="h-3 w-3" />
+              Recon Workflow Redefined
+            </span>
 
-          {/* Headline */}
-          <h1 className="mt-8 text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.05] text-foreground animate-fade-in-up">
-            Accelerate your used cars from{" "}
-            <span className="text-gradient-accent">intake to frontline</span>{" "}
-            in days, not weeks.
-          </h1>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.05] text-foreground">
+              Intake to frontline, <span className="text-gradient-accent">slashed to hours</span>.
+            </h1>
 
-          {/* Subheading */}
-          <p className="mt-6 text-base sm:text-lg text-muted-foreground/80 max-w-2xl leading-relaxed">
-            Reconverse synchronizes your dealership's inspections, estimate builders, approvals, and work orders in a single, mobile-first pipeline designed for lot speed.
-          </p>
+            <p className="mt-6 text-sm sm:text-base text-muted-foreground/80 leading-relaxed">
+              Ditch the whiteboards and paper logs. Reconverse synchronizes your vehicle inspections, parts estimation sheets, and approval cycles into a clean, mobile-first operations hub.
+            </p>
 
-          {/* Actions */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            <Button asChild size="lg" className="w-full sm:w-auto gap-2 h-12 px-8 font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01] transition-all">
-              <Link to="/login" id="hero-getstarted-btn">
-                Start Redeeming Cycle
-                <ArrowRight className="h-4.5 w-4.5" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="w-full sm:w-auto gap-2 h-12 px-8 font-semibold border-border/40 text-foreground/85 bg-background/20 backdrop-blur-md hover:bg-background/40">
-              <Link to="/login" id="hero-signin-btn">
-                <Lock className="h-4 w-4 text-muted-foreground/60" /> Member Login
-              </Link>
-            </Button>
+            <div className="mt-8 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+              <Button asChild size="lg" className="w-full sm:w-auto gap-2 h-12 px-8 font-bold shadow-lg shadow-primary/20 hover:scale-[1.01] transition-transform">
+                <Link to="/login" id="hero-getstarted-btn">
+                  Get Started Free
+                  <ArrowRight className="h-4.5 w-4.5" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="w-full sm:w-auto gap-2 h-12 px-8 font-semibold border-border/40 bg-background/25">
+                <Link to="/login" id="hero-signin-btn">Member Sign In</Link>
+              </Button>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/45">
+              <span>✓ Auto VIN Decoder</span>
+              <span>·</span>
+              <span>✓ Mobile lot dashboard</span>
+              <span>·</span>
+              <span>✓ Real-time holding indicators</span>
+            </div>
           </div>
 
-          {/* Value markers */}
-          <div className="mt-6 flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[11px] font-bold tracking-wider uppercase text-muted-foreground/50">
-            <span>✓ Multi-rooftop Scoped</span>
-            <span>·</span>
-            <span>✓ Mobile-first lot-ready</span>
-            <span>·</span>
-            <span>✓ Auto VIN Decoder</span>
+          {/* Right Hero Column (Interactive ROI Tool) */}
+          <div className="flex justify-center lg:justify-end">
+            <ROICalculator />
           </div>
-        </div>
-
-        {/* Dynamic Centerpiece Showcase */}
-        <div className="mt-16 sm:mt-20">
-          <PipelineShowcase activeStage={activeStage} setActiveStage={setActiveStage} />
         </div>
       </div>
     </section>
@@ -203,123 +206,122 @@ function Hero({ activeStage, setActiveStage }: { activeStage: string; setActiveS
 }
 
 /* ── Interactive Pipeline Showcase Card ── */
-function PipelineShowcase({ activeStage, setActiveStage }: { activeStage: string; setActiveStage: (id: string) => void }) {
+function PipelineSection() {
+  const [activeStage, setActiveStage] = useState<string>("mpi");
   const currentStageInfo = STAGES.find(s => s.id === activeStage) || STAGES[0];
   const ActiveIcon = currentStageInfo.icon;
 
+  const stageDetails: Record<string, { role: string; text: string; details: string }> = {
+    intake: { role: "Intake Agent", text: "Register lot units instantly.", details: "Decode the VIN config automatically, assign stock numbers, and upload initial visual lot condition check photos." },
+    mpi: { role: "Technician", text: "Multi-point lot inspection check.", details: "Walk the vehicle to assess frame, interior, tires, mechanical, and safety points using quick mobile checkboxes." },
+    estimate: { role: "Service Advisor", text: "Itemize repair actions.", details: "Draft estimations containing labor line item hours, parts numbers, sublets, taxes, and automatically computed margins." },
+    approval: { role: "Dealer Manager", text: "Authorize repair limits.", details: "Approve or decline operations item-by-item, pushing accepted work items straight to mechanic work orders." },
+    repair: { role: "Mechanic", text: "Execute lane tasks.", details: "Mechanics update status flags, post labor comments, and attach completed photos directly from their workstation." },
+    qc: { role: "QC Inspector", text: "Verify completed works.", details: "Double-check safety parameters, clean visual defects, and sign off before releasing to the lot." },
+    ready: { role: "Sales Admin", text: "frontline list ready.", details: "Generate retail lot guides, download safety reports, list pricing specs, and update frontline inventory status." }
+  };
+
   return (
-    <div className="glass-panel-strong p-6 sm:p-8 max-w-5xl mx-auto relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[60px] pointer-events-none" />
-      
-      <div className="flex items-center justify-between mb-6 border-b border-border/30 pb-4">
-        <div>
-          <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-primary/70">
-            Pipeline Explorer
-          </p>
-          <h3 className="text-sm font-semibold text-foreground/50 mt-0.5">Click/Hover stages to inspect details</h3>
+    <section className="relative bg-gradient-section py-20 sm:py-24 border-t border-border/20">
+      <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <div className="text-center mb-12">
+          <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-primary bg-primary/10 px-3.5 py-1 rounded-full border border-primary/20">
+            Unified Workflow
+          </span>
+          <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+            Connect every lane in one dashboard.
+          </h2>
         </div>
-        <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground/40 bg-muted/30 px-3 py-1 rounded-md">
-          reconverse.app/workspace
-        </span>
-      </div>
 
-      {/* Stage Grid Buttons */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
-        {STAGES.map((stage) => {
-          const Icon = stage.icon;
-          const isActive = stage.id === activeStage;
-          return (
-            <button
-              key={stage.id}
-              onClick={() => setActiveStage(stage.id)}
-              onMouseEnter={() => setActiveStage(stage.id)}
-              className={cn(
-                "glass-panel p-4 flex flex-col gap-3 text-left transition-all duration-300 relative group",
-                isActive 
-                  ? "border-primary/50 bg-primary/5 scale-[1.02] shadow-[0_0_20px_hsl(var(--primary)/0.08)]" 
-                  : "hover:border-border/80 hover:bg-muted/10"
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className={cn("h-1.5 w-1.5 rounded-full", stage.dot)} />
-                  <span className="text-[10px] font-bold text-muted-foreground/80 tracking-wide uppercase">
-                    {stage.label}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-baseline justify-between mt-1">
-                <span className="text-xl font-extrabold text-foreground tracking-tight tabular-nums">
-                  {stage.metric.split(" ")[0]}
-                </span>
-                <Icon className={cn("h-4 w-4 opacity-70 group-hover:scale-110 transition-transform", stage.tint)} />
-              </div>
-              {isActive && (
-                <span className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-primary to-emerald-400 rounded-b-xl" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Interactive Detail Panel */}
-      <div className="glass-panel p-5 bg-background/30 backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6 transition-all duration-500 animate-fade-in border-primary/10">
-        <div className="flex items-start gap-4">
-          <div className={cn("h-14 w-14 rounded-2xl border border-border/40 flex items-center justify-center bg-muted/10 shrink-0 shadow-inner", currentStageInfo.dot.replace("bg-", "text-"))}>
-            <ActiveIcon className="h-6 w-6" />
+        <div className="glass-panel-strong p-6 max-w-4xl mx-auto">
+          {/* Stage Buttons */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 mb-6">
+            {STAGES.map((s) => {
+              const Icon = s.icon;
+              const isActive = s.id === activeStage;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveStage(s.id)}
+                  onMouseEnter={() => setActiveStage(s.id)}
+                  className={cn(
+                    "glass-panel p-3 text-left transition-all duration-300 relative group",
+                    isActive ? "border-accent/40 bg-accent/5 scale-[1.02]" : "hover:border-border/80"
+                  )}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-muted-foreground truncate">{s.label}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-lg font-black text-foreground">
+                      {[12, 8, 5, 3, 6, 2, 9][STAGES.findIndex(x => x.id === s.id)]}
+                    </span>
+                    <Icon className={cn("h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity", s.tint)} />
+                  </div>
+                  {isActive && (
+                    <span className="absolute bottom-0 inset-x-0 h-0.5 bg-accent" />
+                  )}
+                </button>
+              );
+            })}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-base font-bold text-foreground">{currentStageInfo.label} Stage</h4>
-              <span className="text-[10px] font-bold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full border border-primary/20">
-                Active: {currentStageInfo.metric}
-              </span>
+
+          {/* Dynamic Stage Details */}
+          <div className="glass-panel p-5 bg-background/25 border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <ActiveIcon className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-foreground">{stageDetails[activeStage].text}</h4>
+                <p className="text-xs text-muted-foreground/75 mt-1 leading-relaxed max-w-xl">
+                  {stageDetails[activeStage].details}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground/80 mt-1.5 max-w-xl leading-relaxed">
-              {currentStageInfo.description}
-            </p>
+            <div className="border-t sm:border-t-0 sm:border-l border-border/40 pt-3 sm:pt-0 sm:pl-4 shrink-0 flex flex-col w-full sm:w-auto">
+              <span className="text-[9px] font-bold tracking-widest text-muted-foreground/40 uppercase">Role Owner</span>
+              <span className="text-xs font-bold text-foreground mt-0.5">{stageDetails[activeStage].role}</span>
+            </div>
           </div>
         </div>
-        <div className="flex flex-col items-start md:items-end justify-center shrink-0 border-t md:border-t-0 md:border-l border-border/45 pt-4 md:pt-0 md:pl-6 w-full md:w-auto">
-          <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">Primary Owner</span>
-          <span className="text-sm font-semibold text-foreground mt-0.5">{currentStageInfo.role}</span>
-        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-/* ── Features section ── */
+/* ── Features Section ── */
 const FEATURES = [
   {
     icon: ClipboardCheck,
-    title: "Multi-point Inspections",
-    body: "Technicians walk the lot with mobile-first checklist sheets. Grade parts, take quick vehicle photos, and add notes inline in real time.",
+    title: "Mobile Inspections",
+    body: "Assess vehicles on the spot. Mark line items, capture photo proof, and record notes on frame, tires, or mechanical safety elements.",
   },
   {
     icon: Calculator,
-    title: "Dynamic Estimate Builder",
-    body: "Compile structured estimates featuring labor operations, parts sourcing, and sublet items. Automate parts margins and tax equations.",
+    title: "Estimate Itemizer",
+    body: "Build estimates containing labor time calculations, part cost details, and sublet items. Set custom margins and compute taxes automatically.",
   },
   {
     icon: ThumbsUp,
-    title: "One-Click Approvals",
-    body: "Decision-makers approve or decline estimates line-by-line via mobile triggers, generating direct shop repair orders instantaneously.",
+    title: "Instant Sign-Offs",
+    body: "Managers accept or deny estimate lines with a single mobile trigger, sending work orders instantly to technicians.",
   },
   {
     icon: Camera,
-    title: "Visual Evidence Photos",
-    body: "Bind specific photos (odometer, damage, completed works) to service lines, stored securely on high-speed bucket systems.",
+    title: "Evidence Photos",
+    body: "Link photos to specific inspections and estimate lines, stored securely in high-speed cloud directories.",
   },
   {
     icon: Activity,
-    title: "Continuous Activity Trail",
-    body: "Chronologically record stage adjustments, user comments, and pricing updates. Keep your team aligned with zero verbal friction.",
+    title: "Continuous Activity Log",
+    body: "Chronologically record stage modifications, user replies, and cost revisions. Eliminate verbal misalignments.",
   },
   {
     icon: Users,
-    title: "Robust Multi-Tenancy",
-    body: "Enterprise database rules enforce rigorous row-level isolation between different dealer rooftops. Data is kept fully secure and segregated.",
+    title: "Rooftop Separations",
+    body: "Enterprise multi-tenant data structures ensure database and inventory records are isolated securely at the server level.",
   },
 ] as const;
 
@@ -328,15 +330,12 @@ function Features() {
     <section className="relative py-20 sm:py-24 border-t border-border/20 bg-background">
       <div className="max-w-6xl mx-auto px-5 sm:px-8">
         <div className="text-center mb-16">
-          <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-            Platform Capabilities
+          <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-accent bg-accent/10 px-3 py-1 rounded-full border border-accent/20">
+            Capabilities
           </span>
           <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-            Engineered for real-world lot performance.
+            Everything your reconditioning loop requires.
           </h2>
-          <p className="mt-3 text-sm text-muted-foreground/80 max-w-2xl mx-auto">
-            Reconverse simplifies vehicle reconditioning by replacing verbal handoffs, whiteboards, and spreadsheets with a single connected workspace.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -366,71 +365,12 @@ function Features() {
   );
 }
 
-/* ── How it works ── */
-const HOW_STEPS = [
-  {
-    n: "01",
-    icon: Car,
-    title: "Ingest the Vehicle",
-    body: "Instantly scan the vehicle's VIN. Our tool decodes vehicle configuration parameters automatically, registering stock indicators.",
-  },
-  {
-    n: "02",
-    icon: Gauge,
-    title: "Run the Recon Lanes",
-    body: "Lanes process vehicles concurrently. Complete assessments, gather manager line sign-offs, and monitor aging warnings.",
-  },
-  {
-    n: "03",
-    icon: CheckCircle2,
-    title: "Frontline & Sale Check",
-    body: "Once QC authorizes, the unit is flagged for frontline listing. Audit trails track metrics, and vehicle stages update automatically.",
-  },
-] as const;
-
-function HowItWorks() {
-  return (
-    <section className="relative bg-gradient-section py-20 sm:py-24 border-t border-border/10">
-      <div className="max-w-6xl mx-auto px-5 sm:px-8">
-        <div className="text-center mb-16">
-          <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-            Speed-To-Frontline
-          </span>
-          <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-            Establish a standardized cycle.
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {HOW_STEPS.map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.n} className="glass-panel p-8 relative overflow-hidden group hover:border-primary/25 transition-all">
-                <span className="absolute -right-3 -top-5 text-7xl font-black text-foreground/5 select-none font-mono group-hover:scale-105 transition-transform duration-300">
-                  {s.n}
-                </span>
-                <Icon className="h-7 w-7 text-primary mb-5" />
-                <h3 className="text-lg font-bold text-foreground mb-3">
-                  {s.title}
-                </h3>
-                <p className="text-xs text-muted-foreground/75 leading-relaxed">
-                  {s.body}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Core Value Strip ── */
+/* ── Value Strip ── */
 function ValueStrip() {
   const items = [
-    { icon: Smartphone, label: "Mobilized Workforce", body: "Equip lot managers and service techs with an intuitive mobile workflow." },
-    { icon: ShieldCheck, label: "Strict RLS Governance", body: "Dealer workspace contents are separated securely at the server-database level." },
-    { icon: Activity, label: "Impeccable Audit Trail", body: "Automatic change history loggers track vehicle updates chronologically." },
+    { icon: Smartphone, label: "Mobilized Lot Speed", body: "Techs and managers execute checklists directly from vehicle hoods." },
+    { icon: ShieldCheck, label: "RLS Governance", body: "Rooftop contents are completely isolated at the server-database level." },
+    { icon: Activity, label: "Detailed Audit Logs", body: "Vehicle updates are chronologically recorded in unified server logs." },
   ];
   return (
     <section className="relative py-16 border-t border-border/20 bg-background">
@@ -466,15 +406,15 @@ function FinalCTA() {
             className="absolute inset-0 opacity-20 pointer-events-none"
             style={{
               background:
-                "radial-gradient(ellipse 60% 50% at 50% 0%, hsl(152 75% 55% / 0.2), transparent), radial-gradient(ellipse 50% 40% at 50% 100%, hsl(260 70% 60% / 0.15), transparent)",
+                "radial-gradient(ellipse 60% 50% at 50% 0%, hsl(var(--primary) / 0.15), transparent), radial-gradient(ellipse 50% 40% at 50% 100%, hsl(var(--ring) / 0.15), transparent)",
             }}
           />
           <div className="relative">
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-              Ready to accelerate your turn rate?
+              Ready to recover holding costs?
             </h2>
             <p className="mt-4 text-xs text-muted-foreground/80 max-w-xl mx-auto leading-relaxed">
-              Consolidate your entire reconditioning loop inside a single dashboard. Get started instantly without set-up friction or credit cards.
+              Consolidate your reconditioning loop under one pipeline. Start tracking units today.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button asChild size="lg" className="w-full sm:w-auto gap-2 h-12 px-8 font-bold shadow-lg shadow-primary/20 hover:scale-[1.01] transition-transform">
@@ -500,7 +440,7 @@ function LandingFooter() {
     <footer className="border-t border-border/20 py-12 bg-background">
       <div className="max-w-6xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-sm">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent grid place-items-center text-background font-black text-sm">
             R
           </div>
           <div>
@@ -531,7 +471,6 @@ function LandingFooter() {
 const Index = () => {
   const navigate = useNavigate();
   const { user, isPlatformAdmin, loading } = useAuth();
-  const [activeStage, setActiveStage] = useState<string>("mpi");
 
   useEffect(() => {
     if (loading) return;
@@ -551,7 +490,7 @@ const Index = () => {
   if (user) return null; // navigating away
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen bg-background text-foreground selection:bg-accent/20 selection:text-accent">
       <Helmet>
         <title>Reconverse — Vehicle Recon Workflow for Modern Dealerships</title>
         <meta
@@ -573,9 +512,9 @@ const Index = () => {
         />
       </Helmet>
       <Nav />
-      <Hero activeStage={activeStage} setActiveStage={setActiveStage} />
+      <Hero />
+      <PipelineSection />
       <Features />
-      <HowItWorks />
       <ValueStrip />
       <FinalCTA />
       <LandingFooter />

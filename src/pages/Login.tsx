@@ -74,15 +74,15 @@ const Login = () => {
       {/* Left Pane (Showcase - hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-hero border-r border-border/30 flex-col justify-between p-12 overflow-hidden select-none">
         {/* Glow gradients */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-primary/10 rounded-full blur-[90px] pointer-events-none" />
-        <div className="absolute bottom-10 right-10 w-[200px] h-[200px] bg-accent/10 rounded-full blur-[70px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-primary/10 rounded-full blur-[90px] pointer-events-none" />
+        <div className="absolute bottom-10 right-10 w-[250px] h-[250px] bg-accent/10 rounded-full blur-[80px] pointer-events-none" />
 
         {/* Brand header */}
         <Link to="/" className="flex items-center gap-2.5 z-10 self-start group">
-          <div className="h-8.5 w-8.5 rounded-lg bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-sm group-hover:scale-105 transition-transform">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center text-foreground font-black text-base shadow-[0_0_20px_rgba(185,90,250,0.25)] group-hover:scale-105 transition-transform">
             R
           </div>
-          <span className="font-extrabold tracking-tight text-foreground text-base">Reconverse</span>
+          <span className="font-extrabold tracking-tight text-foreground text-base group-hover:text-primary transition-colors">Reconverse</span>
           <span className="text-[9px] font-bold text-muted-foreground/50 border border-border/60 px-2 py-0.5 rounded-full ml-1">.app</span>
         </Link>
 
@@ -120,7 +120,7 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="glass-panel p-4.5 bg-background/25 border-primary/10">
+          <div className="glass-panel p-4.5 bg-background/25 border-primary/10 shadow-lg shadow-black/30">
             <p className="text-xs text-muted-foreground/90 italic leading-relaxed">
               "We slashed our key-to-key cycle from 8.5 days down to 36 hours. The tech dashboard eliminated paper tracking for good."
             </p>
@@ -151,7 +151,7 @@ const Login = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile brand header (shown on small viewports) */}
           <div className="flex flex-col items-center lg:hidden text-center gap-2.5 mb-2 select-none">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-base shadow-[0_0_15px_hsl(var(--primary)/0.2)]">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center text-foreground font-black text-base shadow-[0_0_15px_hsl(var(--primary)/0.2)]">
               R
             </div>
             <div>
@@ -160,8 +160,8 @@ const Login = () => {
             </div>
           </div>
 
-          <Card className="glass-panel-strong border-border/40 w-full shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary to-emerald-500" />
+          <Card className="glass-panel-strong border-border/40 w-full shadow-2xl relative overflow-hidden shadow-black/40">
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary to-accent" />
             <CardHeader className="text-center pb-3">
               <CardTitle className="text-xl font-extrabold text-foreground">Sign In to Dashboard</CardTitle>
               <CardDescription className="text-xs text-muted-foreground">Admin & Staff workspace gate</CardDescription>
@@ -176,7 +176,7 @@ const Login = () => {
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     placeholder="you@dealership.com or username"
-                    className="h-10 text-xs bg-muted/10 border-border/30 focus-visible:ring-primary focus-visible:border-primary"
+                    className="h-10 text-xs bg-muted/10 border-border/30 focus-visible:ring-accent focus-visible:border-accent focus:border-accent/80 transition-all duration-200"
                     required
                   />
                 </div>
@@ -190,7 +190,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="h-10 text-xs bg-muted/10 border-border/30 focus-visible:ring-primary focus-visible:border-primary"
+                    className="h-10 text-xs bg-muted/10 border-border/30 focus-visible:ring-accent focus-visible:border-accent focus:border-accent/80 transition-all duration-200"
                     required
                   />
                 </div>
@@ -204,7 +204,7 @@ const Login = () => {
                 
                 <Button 
                   type="submit" 
-                  className="w-full h-10 font-bold tracking-wide uppercase text-xs shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all mt-6"
+                  className="w-full h-10 font-black tracking-wide uppercase text-xs shadow-lg shadow-primary/20 hover:shadow-accent/20 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 border-0 text-foreground transition-all mt-6"
                   disabled={loading}
                 >
                   {loading ? (

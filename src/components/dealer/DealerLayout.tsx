@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentDealer } from "@/hooks/useDealerData";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -47,20 +47,20 @@ function SidebarNavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          "group relative flex items-center gap-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300",
-          collapsed ? "justify-center px-3 py-3" : "px-3.5 py-3",
+          "group relative flex items-center gap-3 rounded-full text-xs font-semibold tracking-wide transition-all duration-300",
+          collapsed ? "justify-center px-3 py-3 mx-1" : "px-4 py-3 mx-2",
           isActive
-            ? "bg-primary/10 border border-primary/20 text-foreground shadow-[0_0_15px_-3px_hsl(var(--primary)/0.15)]"
-            : "text-muted-foreground hover:text-foreground hover:bg-muted/10 border border-transparent"
+            ? "bg-gradient-to-r from-primary/15 to-accent/5 border border-primary/20 text-foreground shadow-[0_0_15px_-3px_hsl(var(--primary)/0.15)]"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/5 border border-transparent"
         )
       }
     >
       {({ isActive }: { isActive: boolean }) => (
         <>
           {isActive && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
+            <span className="absolute left-1 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-primary to-accent shadow-[0_0_10px_hsl(var(--ring)/0.8)]" />
           )}
-          <Icon className={cn("shrink-0 h-[17px] w-[17px] transition-transform group-hover:scale-105", isActive ? "text-primary" : "text-muted-foreground/60 group-hover:text-foreground")} />
+          <Icon className={cn("shrink-0 h-[17px] w-[17px] transition-transform group-hover:scale-105", isActive ? "text-accent" : "text-muted-foreground/60 group-hover:text-foreground")} />
           {!collapsed && <span>{label}</span>}
         </>
       )}
@@ -81,9 +81,9 @@ function SidebarNavItem({
 }
 
 function SidebarContent({
-  collapsed, onCollapse, showCollapseBtn,
+  collapsed, onCollapse, showCollapseBtn, className,
 }: {
-  collapsed: boolean; onCollapse?: () => void; showCollapseBtn: boolean;
+  collapsed: boolean; onCollapse?: () => void; showCollapseBtn: boolean; className?: string;
 }) {
   const { signOut, user, isPlatformAdmin } = useAuth();
   const { data: membership } = useCurrentDealer();
@@ -94,10 +94,13 @@ function SidebarContent({
 
   return (
     <div
-      className="flex h-full flex-col border-r border-border/20"
-      style={{
-        background: "linear-gradient(180deg, hsl(var(--sidebar-background)) 0%, hsl(224 45% 3% / 0.8) 100%)",
-      }}
+      className={cn(
+        "flex h-full flex-col",
+        className ? className : "border-r border-border/20"
+      )}
+      style={!className ? {
+        background: "linear-gradient(180deg, hsl(var(--sidebar-background)) 0%, hsl(222, 47%, 2%) 100%)",
+      } : undefined}
     >
       {/* Brand header */}
       <div className={cn(
@@ -105,8 +108,8 @@ function SidebarContent({
         collapsed ? "px-2 py-5" : "px-5 py-6",
         "border-b border-border/10"
       )}>
-        <Link to="/" className="flex items-center justify-center gap-2 group">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-base shadow-[0_0_20px_hsl(var(--primary)/0.25)] transition-transform group-hover:scale-105">
+        <Link to="/" className="flex items-center justify-center gap-2.5 group">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent grid place-items-center text-foreground font-black text-base shadow-[0_0_20px_hsl(var(--primary)/0.25)] transition-transform group-hover:scale-105">
             R
           </div>
           {!collapsed && (
@@ -123,11 +126,11 @@ function SidebarContent({
       </div>
 
       {/* Nav sections */}
-      <nav className="flex-1 overflow-y-auto px-3.5 py-6 space-y-6">
+      <nav className="flex-1 overflow-y-auto py-6 space-y-6">
         {/* Workspace */}
         <div>
           {!collapsed && (
-            <p className="px-3.5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
+            <p className="px-5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
               Workspace
             </p>
           )}
@@ -142,7 +145,7 @@ function SidebarContent({
         {showReconLane && (
           <div>
             {!collapsed && (
-              <p className="px-3.5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
+              <p className="px-5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
                 Recon Lane
               </p>
             )}
@@ -158,7 +161,7 @@ function SidebarContent({
         {showAdmin && (
           <div>
             {!collapsed && (
-              <p className="px-3.5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
+              <p className="px-5 mb-2.5 text-[9px] font-bold tracking-[0.15em] uppercase text-muted-foreground/35">
                 Admin Settings
               </p>
             )}
@@ -172,7 +175,7 @@ function SidebarContent({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border/10 p-3.5 space-y-1 bg-black/10">
+      <div className="border-t border-border/10 p-3.5 space-y-1 bg-black/20">
         {isPlatformAdmin && (
           <NavLink
             to="/platform"
@@ -266,7 +269,7 @@ export function DealerLayout() {
               <SidebarContent collapsed={false} showCollapseBtn={false} />
             </SheetContent>
           </Sheet>
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-emerald-500 grid place-items-center text-background font-black text-xs shadow-[0_0_12px_hsl(var(--primary)/0.25)]">
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-accent grid place-items-center text-foreground font-black text-xs shadow-[0_0_12px_hsl(var(--primary)/0.25)]">
             R
           </div>
           <span className="font-extrabold text-sm text-foreground flex-1 tracking-tight">Reconverse</span>
@@ -281,9 +284,14 @@ export function DealerLayout() {
 
   return (
     <div className="min-h-screen bg-background flex selection:bg-primary/20 selection:text-primary">
-      <aside className={cn("shrink-0 transition-all duration-300 ease-in-out", collapsed ? "w-[72px]" : "w-60")}>
-        <div className="sticky top-0 h-screen">
-          <SidebarContent collapsed={collapsed} onCollapse={() => setCollapsed((c) => !c)} showCollapseBtn />
+      <aside className={cn("shrink-0 transition-all duration-300 ease-in-out z-30", collapsed ? "w-20" : "w-64")}>
+        <div className="sticky top-0 h-screen py-3 pl-3">
+          <SidebarContent 
+            collapsed={collapsed} 
+            onCollapse={() => setCollapsed((c) => !c)} 
+            showCollapseBtn 
+            className="floating-sidebar m-0 h-full" 
+          />
         </div>
       </aside>
       <main className="flex-1 flex flex-col h-screen overflow-hidden">

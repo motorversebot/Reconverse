@@ -31,7 +31,7 @@ const STAGE_COLORS: Record<string, string> = {
   approval: "bg-orange-400",
   repair: "bg-purple-400",
   qc: "bg-teal-400",
-  ready: "bg-emerald-500",
+  ready: "bg-accent",
   sold: "bg-muted-foreground",
 };
 
@@ -41,7 +41,7 @@ const STAGE_TEXT: Record<string, string> = {
   approval: "text-orange-400",
   repair: "text-purple-400",
   qc: "text-teal-400",
-  ready: "text-emerald-455",
+  ready: "text-accent",
   sold: "text-muted-foreground",
 };
 
@@ -51,7 +51,7 @@ const STAGE_BG: Record<string, string> = {
   approval: "bg-orange-400/10",
   repair: "bg-purple-400/10",
   qc: "bg-teal-400/10",
-  ready: "bg-emerald-500/10",
+  ready: "bg-accent/10",
   sold: "bg-muted/20",
 };
 
@@ -184,25 +184,25 @@ export default function DealerDashboard() {
           label="Active Units"
           value={kpis.activeUnits}
           sub="Lot Inventory"
-          icon={<Car className="h-4 w-4 text-sky-400" />}
-          waveColor="#38bdf8"
+          icon={<Car className="h-4 w-4 text-primary" />}
+          waveColor="#8b5cf6"
           onClick={() => navigate("/dealer/units")}
         />
         <KPICard
           label="Ready for Sale"
           value={kpis.readyCount}
           sub="Finished Cycle"
-          icon={<CheckCircle className="h-4 w-4 text-emerald-400" />}
-          accent="text-emerald-400"
-          waveColor="#34d399"
+          icon={<CheckCircle className="h-4 w-4 text-accent" />}
+          accent="text-accent"
+          waveColor="#06b6d4"
           onClick={() => navigate(`/dealer/recon-lane/ready-for-sale`)}
         />
         <KPICard
           label="Avg Recon Cycle"
           value={kpis.avgReconDays > 0 ? `${kpis.avgReconDays}d` : "—"}
           sub="30d rolling avg"
-          icon={<Activity className="h-4 w-4 text-purple-400" />}
-          waveColor="#c084fc"
+          icon={<Activity className="h-4 w-4 text-primary" />}
+          waveColor="#8b5cf6"
         />
         <KPICard
           label="Oldest Unit"
@@ -225,9 +225,9 @@ export default function DealerDashboard() {
           label="Recon Pipeline $"
           value={kpis.openReconDollars !== null ? `$${Math.round(kpis.openReconDollars).toLocaleString()}` : "—"}
           sub={kpis.estimatesMissingCount > 0 ? `${kpis.estimatesMissingCount} missing bills` : "Approved works"}
-          icon={<DollarSign className="h-4 w-4 text-emerald-400" />}
-          waveColor="#10b981"
-          accent="text-primary"
+          icon={<DollarSign className="h-4 w-4 text-accent" />}
+          waveColor="#06b6d4"
+          accent="text-accent"
         />
       </div>
 
@@ -386,12 +386,12 @@ export default function DealerDashboard() {
               <BarChart data={throughput} barGap={3}>
                 <defs>
                   <linearGradient id="addedBarGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2} />
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.2} />
                   </linearGradient>
                   <linearGradient id="completedBarGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.2} />
+                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.2} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -418,11 +418,11 @@ export default function DealerDashboard() {
           </div>
           <div className="flex items-center gap-4 px-1 pt-1 border-t border-border/10">
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded bg-blue-500" />
+              <span className="h-2 w-2 rounded bg-primary" />
               <span className="text-[10px] font-semibold text-muted-foreground/60">Vehicles Added</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded bg-emerald-500" />
+              <span className="h-2 w-2 rounded bg-accent" />
               <span className="text-[10px] font-semibold text-muted-foreground/60">Vehicles Completed</span>
             </div>
           </div>
@@ -437,8 +437,8 @@ export default function DealerDashboard() {
               <AreaChart data={throughput}>
                 <defs>
                   <linearGradient id="trendAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#06b6d4" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" tick={false} axisLine={false} tickLine={false} />
@@ -456,7 +456,7 @@ export default function DealerDashboard() {
                 <Area
                   type="monotone"
                   dataKey="completed"
-                  stroke="#10b981"
+                  stroke="#06b6d4"
                   strokeWidth={2.5}
                   fill="url(#trendAreaGrad)"
                   name="Completed"
