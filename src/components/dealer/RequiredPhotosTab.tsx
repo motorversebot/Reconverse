@@ -309,7 +309,6 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
             file_path: filePath,
             file_name: file.name,
             category,
-            uploaded_by: user?.id ?? null,
           } as any),
           });
           const _insJ = await _insRes.json().catch(() => null);

@@ -136,7 +136,6 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
             file_path: filePath,
             file_name: file.name,
             category: selectedCategory,
-            uploaded_by: user?.id ?? null,
           } as any),
         });
         const insertJ = await insertRes.json().catch(() => null);
