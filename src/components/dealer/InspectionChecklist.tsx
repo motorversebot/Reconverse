@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, rvFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2, XCircle, AlertTriangle, Circle,
@@ -118,12 +118,9 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
   const { data: savedItems, isLoading } = useQuery({
     queryKey: ["inspection-items", unitId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unit_inspection_items" as any)
-        .select("*")
-        .eq("unit_id", unitId);
-      if (error) throw error;
-      return data as any[] as InspectionItem[];
+      const res = await rvFetch<InspectionItem[]>(`/inspection-items?unit_id=${unitId}`);
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
     },
   });
 

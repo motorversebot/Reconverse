@@ -6,7 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, rvFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Upload, Trash2, Loader2, ImagePlus, X, ZoomIn, CheckCircle2,
@@ -195,13 +195,9 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
   const { data: photos, isLoading } = useQuery({
     queryKey: ["unit-photos", unitId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unit_photos" as any)
-        .select("*")
-        .eq("unit_id", unitId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as any[] as UnitPhoto[];
+      const res = await rvFetch<UnitPhoto[]>(`/photos?unit_id=${unitId}`);
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
     },
   });
 
@@ -657,12 +653,9 @@ export function useRequiredPhotosComplete(unitId: string) {
   const { data: photos } = useQuery({
     queryKey: ["unit-photos", unitId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unit_photos" as any)
-        .select("category")
-        .eq("unit_id", unitId);
-      if (error) throw error;
-      return data as any[];
+      const res = await rvFetch<any[]>(`/photos?unit_id=${unitId}`);
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
     },
     enabled: !!unitId,
   });

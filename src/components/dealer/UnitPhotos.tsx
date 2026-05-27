@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, rvFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Upload, Trash2, Loader2, ImagePlus, X, ZoomIn,
@@ -61,13 +61,9 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
   const { data: photos, isLoading } = useQuery({
     queryKey: ["unit-photos", unitId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unit_photos" as any)
-        .select("*")
-        .eq("unit_id", unitId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as any[] as UnitPhoto[];
+      const res = await rvFetch<UnitPhoto[]>(`/photos?unit_id=${unitId}`);
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
     },
   });
 

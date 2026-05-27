@@ -18,7 +18,7 @@ Core modules: Dealer Dashboard · Units · Add Unit · Unit Detail · MPI Inspec
 - Tailwind CSS + shadcn/ui (Radix primitives)
 - React Router v6
 - TanStack Query
-- Supabase (Postgres + Auth + Storage + Edge Functions) — multi-tenant via `dealer_id` with RLS
+- Motorverse Mission Control backend — auth + data via a same-origin API proxy (`/api/v1/*` → MC gateway). Multi-tenant via `dealer_id`.
 
 ## Local development
 
@@ -43,23 +43,24 @@ npm run preview        # preview production build
 
 ## Environment
 
-Real keys live in `.env` (gitignored). The template is `.env.example`. Only the Supabase anon/publishable key belongs in the frontend env — service-role keys must never be committed and must only live in Edge Function secrets.
+The frontend needs **no** environment variables — browser requests stay same-origin (`/api/v1/*`) and are forwarded to Mission Control by the serverless proxy `api/v1/[...path].ts`.
 
-| Variable | Purpose |
-|---|---|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_PROJECT_ID` | Project ref |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon publishable key |
+| Variable | Scope | Purpose |
+|---|---|---|
+| `MC_API_INTERNAL` | Server (Vercel) | Mission Control gateway base URL the proxy forwards to. Optional; defaults to `https://gateway.tdreman.app/mc`. |
 
-## Supabase
+## Backend — Mission Control
 
-- Migrations live in `supabase/migrations/`
-- Edge functions in `supabase/functions/`
-- Config in `supabase/config.toml`
+Auth and all data live in Motorverse Mission Control, reached through a same-origin proxy:
 
-Schema highlights: `dealers`, `dealer_memberships`, `profiles`, `units`, `unit_inspection_items`, `unit_tire_inspections`, `unit_photos`, `unit_comments`, `unit_activity_logs`, `stage_history`, `estimates` + `estimate_operations` + `estimate_items`, `work_orders` + `work_order_items`, `notifications` + `notification_reads`.
+`browser → /api/v1/* → api/v1/[...path].ts → MC gateway`
 
-Every tenant-scoped table is gated by RLS via `is_dealer_member(dealer_id)` / `is_dealer_admin(dealer_id)` / `is_platform_admin()` security-definer functions.
+- **Auth**: JWT access/refresh tokens issued by Mission Control. Client is `src/lib/api.ts`; session lives in `src/hooks/useAuth.tsx`. Backend/"god-mode" access at `/platform` is gated on the `is_platform_admin` flag returned by MC (see `src/components/platform/PlatformGuard.tsx`).
+- **Data**: the `src/hooks/use*Data.ts` / `use*Actions.ts` hooks call `/api/v1/reconverse/*` via `rvFetch` / `apiFetch`.
+
+Domain entities (managed by Mission Control): `dealers`, `dealer_memberships`, `profiles`, `units`, `unit_inspection_items`, `unit_tire_inspections`, `unit_photos`, `unit_comments`, `unit_activity_logs`, `stage_history`, `estimates` + `estimate_operations` + `estimate_items`, `work_orders` + `work_order_items`, `notifications` + `notification_reads`.
+
+> The `supabase/` directory (migrations, edge functions, config) is **legacy** from before the Mission Control migration and is no longer used by the running app. It is kept for schema/history reference only.
 
 ## Roles
 

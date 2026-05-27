@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, loginErrorMessage } from "@/lib/api";
 import { provisionDealerIfNeeded } from "@/lib/provisionDealer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +42,7 @@ const Login = () => {
     const { error: signInError } = await signIn(email, password);
     setLoading(false);
     if (signInError) {
-      setError("Invalid credentials");
+      setError(loginErrorMessage(signInError.message));
       return;
     }
 

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MessageSquarePlus, MessageCircle } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, rvFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -33,13 +33,9 @@ export default function UnitCommentsCard({ unitId, dealerId }: Props) {
   const { data: comments, isLoading } = useQuery({
     queryKey: ["unit-comments", unitId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unit_comments" as any)
-        .select("*, profiles:user_id(full_name, email)")
-        .eq("unit_id", unitId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as any[] as UnitComment[];
+      const res = await rvFetch<UnitComment[]>(`/comments?unit_id=${unitId}`);
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
     },
   });
 

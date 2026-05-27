@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, loginErrorMessage } from "@/lib/api";
 import { provisionDealerIfNeeded } from "@/lib/provisionDealer";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ const LoginModal = ({ open, onOpenChange, onSwitchToSignup }: LoginModalProps) =
     const { error: signInError } = await signIn(email, password);
     if (signInError) {
       setLoading(false);
-      setError("Invalid credentials");
+      setError(loginErrorMessage(signInError.message));
       return;
     }
 

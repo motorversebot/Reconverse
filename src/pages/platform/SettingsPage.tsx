@@ -58,11 +58,9 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!user) return;
     const loadProfile = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name, username")
-        .eq("id", user.id)
-        .single();
+      const res = await apiFetch("/api/v1/auth/me");
+      const j = await res.json().catch(() => null);
+      const data = j?.ok ? j.data.user : null;
       if (data) {
         setDisplayName(data.full_name ?? "");
         setUsername((data as any).username ?? "");
@@ -79,10 +77,13 @@ export default function SettingsPage() {
     if (!usernameReadOnly && username.trim()) {
       updateData.username = username.trim();
     }
-    const { error } = await supabase
-      .from("profiles")
-      .update(updateData)
-      .eq("id", user.id);
+    const res = await apiFetch("/api/v1/reconverse/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateData),
+    });
+    const j = await res.json().catch(() => null);
+    const error = (!res.ok || !j?.ok) ? new Error(j?.error || "Update failed") : null;
     setProfileLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

@@ -9,7 +9,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { X, ZoomIn, ImageOff, Clock } from "lucide-react";
 import { STAGE_META, type UnitStatus } from "@/lib/pipeline";
 import { hoursInStage, formatAgingDuration, agingColor, AGING_COLORS, AGING_BG } from "@/hooks/useStageAging";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, rvFetch } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
@@ -43,13 +43,9 @@ export default function StaffUnitDrawer({ unit, open, onOpenChange }: Props) {
     queryKey: ["staff-unit-photos", unit?.id],
     queryFn: async () => {
       if (!unit?.id) return [];
-      const { data, error } = await supabase
-        .from("unit_photos" as any)
-        .select("*")
-        .eq("unit_id", unit.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as any[] as UnitPhoto[];
+      const res = await rvFetch<UnitPhoto[]>(`/photos?unit_id=${unit.id}`);
+      if (!res.ok) throw new Error(res.error);
+      return res.data ?? [];
     },
     enabled: open && !!unit?.id,
   });

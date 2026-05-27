@@ -144,6 +144,22 @@ export async function login(
   return { ok: true, user: j.data.user };
 }
 
+// Maps a raw login error code (from `login`/`signIn`) to a human-readable message.
+// Distinguishes bad credentials from auth-server/gateway problems so the cause is diagnosable.
+export function loginErrorMessage(code: string | undefined | null): string {
+  const c = (code || '').toLowerCase();
+  if (c === 'invalid_credentials' || c === 'invalid_login' || c === 'unauthorized' || c === 'http_401') {
+    return 'Invalid email or password.';
+  }
+  if (c === 'account_disabled' || c === 'user_disabled' || c === 'http_403') {
+    return 'This account is disabled. Contact your administrator.';
+  }
+  if (c === 'gateway_error' || c === 'http_502' || c === 'http_503' || c === 'http_504' || c.startsWith('http_5')) {
+    return "Can't reach the authentication server. Try again shortly.";
+  }
+  return code ? `Sign-in failed (${code}).` : 'Sign-in failed. Please try again.';
+}
+
 export async function logout(): Promise<void> {
   const r = getRefresh();
   try {
