@@ -115,7 +115,7 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
         const filePath = `${dealerId}/${unitId}/${crypto.randomUUID()}.${ext}`;
 
         const uploadForm = new FormData();
-        uploadForm.append("file", file, { contentType: file.type });
+        uploadForm.append("file", file, file.name);
         uploadForm.append("path", filePath);
         const uploadRes = await apiFetch("/api/v1/reconverse/photos/upload", { method: "POST", body: uploadForm });
         const uploadJ = await uploadRes.json().catch(() => null);

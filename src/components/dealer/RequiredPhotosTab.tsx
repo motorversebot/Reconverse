@@ -289,7 +289,7 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
         const filePath = `${dealerId}/${unitId}/${crypto.randomUUID()}.${ext}`;
 
         const _upForm = new FormData();
-          _upForm.append("file", file, { contentType: file.type });
+          _upForm.append("file", file, file.name);
           _upForm.append("path", filePath);
           const _upRes = await apiFetch("/api/v1/reconverse/photos/upload", { method: "POST", body: _upForm });
           const _upJ = await _upRes.json().catch(() => null);
