@@ -43,3 +43,4 @@ yarn.lock
 # OS
 Thumbs.db
 .smbdelete*
+.vercel

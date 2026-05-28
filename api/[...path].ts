@@ -12,7 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const pathSegments = req.query.path;
   const pathStr = Array.isArray(pathSegments) ? pathSegments.join('/') : pathSegments || '';
   const qs = req.url?.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-  const target = `${MC_API.replace(/\/+$/, '')}/api/v1/${pathStr}${qs}`;
+  // Function lives at api/[...path].ts, so pathStr already includes "v1/..." for /api/v1/* requests.
+  const target = `${MC_API.replace(/\/+$/, '')}/api/${pathStr}${qs}`;
 
   const headers: Record<string, string> = {};
   for (const [k, v] of Object.entries(req.headers)) {
