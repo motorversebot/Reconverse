@@ -1,19 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getMe } from "@/lib/api";
 
+/**
+ * Current dealer membership for the signed-in user.
+ *
+ * MC's /api/v1/reconverse/me/membership endpoint isn't implemented yet, so we
+ * derive membership from /api/v1/auth/me (which DOES return dealer_id + role).
+ * dealer_name isn't on the user object, so we leave it empty until MC exposes
+ * the dedicated membership endpoint.
+ *
+ * No retry: if /auth/me fails, sign-in won't proceed — surface the error fast
+ * rather than spin the loading screen.
+ */
 export function useCurrentDealer() {
   return useQuery({
     queryKey: ["current-dealer"],
+    retry: false,
     queryFn: async () => {
-      const res = await apiFetch("/api/v1/reconverse/me/membership");
-      const j = await res.json().catch(() => null);
-      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed to load membership");
-      return j.data as {
-        dealer_id: string;
-        dealer_name: string;
-        role: string;
-        is_active: boolean;
-      };
+      const user = await getMe();
+      if (!user) throw new Error("not_authenticated");
+      if (!user.dealer_id || !user.role) {
+        throw new Error("no_dealer_membership");
+      }
+      return {
+        dealer_id: user.dealer_id,
+        dealer_name: "",
+        role: user.role,
+        is_active: true,
+      } as { dealer_id: string; dealer_name: string; role: string; is_active: boolean };
     },
   });
 }
