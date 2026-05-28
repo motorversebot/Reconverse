@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const MC_API = process.env.MC_API_INTERNAL || 'https://gateway.tdreman.app/mc';
+const MC_API = process.env.MC_API_INTERNAL || 'http://motorverse.genesis.lan';
 
 const HOP_BY_HOP = new Set([
   'connection', 'content-length', 'host', 'keep-alive',

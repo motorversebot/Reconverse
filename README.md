@@ -47,7 +47,7 @@ The frontend needs **no** environment variables — browser requests stay same-o
 
 | Variable | Scope | Purpose |
 |---|---|---|
-| `MC_API_INTERNAL` | Server (Vercel) | Mission Control gateway base URL the proxy forwards to. Optional; defaults to `https://gateway.tdreman.app/mc`. |
+| `MC_API_INTERNAL` | Server (Vercel) | Mission Control gateway base URL the proxy forwards to. Optional; defaults to `http://motorverse.genesis.lan`. |
 
 ## Backend — Mission Control
 
