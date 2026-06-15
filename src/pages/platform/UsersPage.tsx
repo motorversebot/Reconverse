@@ -11,6 +11,21 @@ import { useResetPassword, useUpdateMembershipRole, useToggleUserActive } from "
 import { useToast } from "@/hooks/use-toast";
 import { KeyRound, UserX, UserCheck, Shield } from "lucide-react";
 
+interface ProfileMembership {
+  dealer_id: string;
+  role: string;
+  is_active: boolean;
+  dealers?: { name?: string | null } | null;
+}
+
+interface PlatformProfile {
+  id: string;
+  email?: string | null;
+  full_name?: string | null;
+  is_platform_admin?: boolean;
+  dealer_memberships?: ProfileMembership[] | null;
+}
+
 export default function UsersPage() {
   const { data: profiles, isLoading } = useProfiles();
   const { data: dealers } = useDealers();
@@ -30,16 +45,16 @@ export default function UsersPage() {
     return Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
   };
 
-  const filtered = profiles?.filter((p: any) => {
+  const filtered = (profiles as PlatformProfile[] | undefined)?.filter((p) => {
     if (search) {
       const s = search.toLowerCase();
       if (!p.email?.toLowerCase().includes(s) && !p.full_name?.toLowerCase().includes(s)) return false;
     }
     if (filterDealer !== "all") {
-      if (!p.dealer_memberships?.some((m: any) => m.dealer_id === filterDealer)) return false;
+      if (!p.dealer_memberships?.some((m) => m.dealer_id === filterDealer)) return false;
     }
     if (filterRole !== "all") {
-      if (!p.dealer_memberships?.some((m: any) => m.role === filterRole)) return false;
+      if (!p.dealer_memberships?.some((m) => m.role === filterRole)) return false;
     }
     return true;
   });
@@ -51,8 +66,8 @@ export default function UsersPage() {
       setShowResetPw(null);
       setNewPw("");
       toast({ title: "Password reset", description: `New password: ${pw}` });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -60,8 +75,8 @@ export default function UsersPage() {
     try {
       await toggleActive.mutateAsync({ user_id: userId, dealer_id: dealerId, is_active: !currentActive });
       toast({ title: currentActive ? "User disabled" : "User enabled" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -69,8 +84,8 @@ export default function UsersPage() {
     try {
       await updateRole.mutateAsync({ user_id: userId, dealer_id: dealerId, role: newRole });
       toast({ title: "Role updated" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -129,7 +144,7 @@ export default function UsersPage() {
               {isLoading && (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>
               )}
-              {filtered?.map((p: any) => {
+              {filtered?.map((p) => {
                 const membership = p.dealer_memberships?.[0];
                 return (
                   <TableRow key={p.id}>

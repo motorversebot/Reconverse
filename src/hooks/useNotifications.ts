@@ -10,7 +10,7 @@ export interface Notification {
   unit_id: string | null;
   user_id: string | null;
   dealer_id: string;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   read_at: string | null;
 }

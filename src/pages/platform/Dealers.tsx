@@ -35,8 +35,8 @@ export default function Dealers() {
       setShowCreate(false);
       setShowCreds({ email: form.admin_email, username: form.admin_username, password });
       setForm({ dealer_name: "", admin_email: "", admin_username: "", admin_full_name: "", temp_password: "" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -44,8 +44,8 @@ export default function Dealers() {
     try {
       await suspendDealer.mutateAsync({ dealer_id: dealerId, suspend });
       toast({ title: suspend ? "Dealer suspended" : "Dealer unsuspended" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 

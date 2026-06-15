@@ -62,12 +62,12 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
     queryKey: ["unit-photos", unitId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("unit_photos" as any)
+        .from("unit_photos" as never)
         .select("*")
         .eq("unit_id", unitId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as any[] as UnitPhoto[];
+      return data as unknown as UnitPhoto[];
     },
   });
 
@@ -141,7 +141,7 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
             file_name: file.name,
             category: selectedCategory,
             uploaded_by: user?.id ?? null,
-          } as any),
+          }),
         });
         const insertJ = await insertRes.json().catch(() => null);
         const insertError = (!insertRes.ok || !insertJ?.ok) ? new Error(insertJ?.error || "Failed") : null;
@@ -153,8 +153,8 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
 
       queryClient.invalidateQueries({ queryKey: ["unit-photos", unitId] });
       toast({ title: `${files.length} photo${files.length > 1 ? "s" : ""} uploaded` });
-    } catch (err: any) {
-      toast({ title: "Upload error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Upload error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -176,7 +176,7 @@ export default function UnitPhotos({ unitId, dealerId }: Props) {
       queryClient.invalidateQueries({ queryKey: ["unit-photos", unitId] });
       toast({ title: "Photo deleted" });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, getMe } from "@/lib/api";
+import { type UnitStatus } from "@/lib/pipeline";
 
 /**
  * Current dealer membership for the signed-in user.
@@ -36,9 +37,45 @@ export function useCurrentDealer() {
   });
 }
 
+/**
+ * Loose shape for the locally-persisted mock unit store. The store is mutated
+ * by useDealerActions, which builds units from dynamically-typed payloads, so
+ * only `id` is guaranteed; all other keys are open.
+ */
+export interface MockUnit {
+  id: string;
+  [key: string]: unknown;
+}
+
+/** Strict read shape exposed by the dealer-units query hooks. */
+export interface DealerUnit {
+  id: string;
+  year: number | null;
+  make: string | null;
+  model: string | null;
+  trim: string | null;
+  color: string | null;
+  vin: string | null;
+  stock_number: string | null;
+  status: UnitStatus;
+  stage_entered_at: string;
+  created_at: string;
+  dealer_id: string;
+  promise_date: string | null;
+  notes: string | null;
+  is_deleted: boolean;
+  updated_at?: string;
+  engine?: string | null;
+  body?: string | null;
+  drive_type?: string | null;
+  transmission?: string | null;
+  deleted_at?: string | null;
+  [key: string]: unknown;
+}
+
 const MOCK_UNITS_KEY = (dealerId: string) => `rv_mock_units_${dealerId}`;
 
-const DEFAULT_MOCK_UNITS = [
+const DEFAULT_MOCK_UNITS: MockUnit[] = [
   {
     id: "unit-1",
     year: 2021,
@@ -245,7 +282,7 @@ const DEFAULT_MOCK_UNITS = [
   }
 ];
 
-export function getLocalMockUnits(dealerId: string): any[] {
+export function getLocalMockUnits(dealerId: string): MockUnit[] {
   if (typeof window === "undefined") return [];
   const key = MOCK_UNITS_KEY(dealerId);
   const data = localStorage.getItem(key);
@@ -261,7 +298,7 @@ export function getLocalMockUnits(dealerId: string): any[] {
   return initial;
 }
 
-export function saveLocalMockUnits(dealerId: string, units: any[]): void {
+export function saveLocalMockUnits(dealerId: string, units: MockUnit[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(MOCK_UNITS_KEY(dealerId), JSON.stringify(units));
 }
@@ -294,11 +331,11 @@ export function useDealerRecentUnits(dealerId?: string) {
       try {
         const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/units?recent=true&limit=10`);
         const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.units as any[];
+        if (res.ok && j?.ok) return j.data.units as DealerUnit[];
       } catch (e) {
         console.warn("recent units API failed, returning mock", e);
       }
-      return getLocalMockUnits(dealerId || "1").slice(0, 10);
+      return getLocalMockUnits(dealerId || "1").slice(0, 10) as unknown as DealerUnit[];
     },
     enabled: !!dealerId,
   });
@@ -312,11 +349,11 @@ export function useDealerUnits(dealerId?: string) {
       try {
         const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/units`);
         const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.units as any[];
+        if (res.ok && j?.ok) return j.data.units as DealerUnit[];
       } catch (err) {
         console.warn("apiFetch failed for dealer units, using mock fallback", err);
       }
-      return getLocalMockUnits(dealerId).filter(u => !u.is_deleted);
+      return getLocalMockUnits(dealerId).filter(u => !u.is_deleted) as unknown as DealerUnit[];
     },
     enabled: !!dealerId,
   });
@@ -330,25 +367,38 @@ export function useDealerArchivedUnits(dealerId?: string) {
       try {
         const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/units?archived=true`);
         const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.units as any[];
+        if (res.ok && j?.ok) return j.data.units as DealerUnit[];
       } catch (err) {
         console.warn("apiFetch failed for archived units, using mock fallback", err);
       }
-      return getLocalMockUnits(dealerId).filter(u => u.is_deleted);
+      return getLocalMockUnits(dealerId).filter(u => u.is_deleted) as unknown as DealerUnit[];
     },
     enabled: !!dealerId,
   });
 }
 
+export interface DealerMember {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  name?: string;
+  profiles?: { full_name?: string | null; email?: string | null } | null;
+  [key: string]: unknown;
+}
+
 export function useDealerMembers(dealerId?: string) {
   return useQuery({
     queryKey: ["dealer-members", dealerId],
-    queryFn: async () => {
+    queryFn: async (): Promise<DealerMember[]> => {
       if (!dealerId) return [];
       try {
         const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/members`);
         const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.members as any[];
+        if (res.ok && j?.ok) return j.data.members as DealerMember[];
       } catch (err) {
         console.warn("apiFetch failed for members, using mock fallback", err);
       }
@@ -357,7 +407,7 @@ export function useDealerMembers(dealerId?: string) {
         { id: "mem-2", full_name: "Dealer Owner", email: "motorverseauto@gmail.com", role: "dealer_owner", is_active: true },
         { id: "mem-3", full_name: "Admin User", email: "admin@reconverse.app", role: "dealer_admin", is_active: true },
         { id: "mem-4", full_name: "Tech User", email: "tech@reconverse.app", role: "technician", is_active: true },
-      ];
+      ] as unknown as DealerMember[];
     },
     enabled: !!dealerId,
   });

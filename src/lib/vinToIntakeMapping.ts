@@ -108,11 +108,11 @@ export function mapVinDecodeToIntake(raw: Record<string, string> | null | undefi
  * @param force If true, overwrite even manual overrides
  */
 export function mergeDecodeIntoIntake(
-  existing: Record<string, any>,
+  existing: Record<string, unknown>,
   mapping: IntakeMappingResult,
   overrides: Set<string>,
   force = false,
-): Record<string, any> {
+): Record<string, unknown> {
   const merged = { ...existing };
 
   // Apply toggles

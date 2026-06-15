@@ -53,8 +53,11 @@ export function DealerGuard({ children }: { children: React.ReactNode }) {
     return <Navigate to="/dealer/units" replace />;
   }
 
-  // Only owner/admin can access users & settings
-  if ((path === "/dealer/users" || path === "/dealer/settings") && !canManageUsers(role)) {
+  // Only owner/admin can access users, billing & settings
+  if (
+    (path === "/dealer/users" || path === "/dealer/settings" || path === "/dealer/billing") &&
+    !canManageUsers(role)
+  ) {
     return <Navigate to="/dealer/units" replace />;
   }
 

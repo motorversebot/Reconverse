@@ -4,11 +4,11 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { AlertTriangle, AlertCircle, Info, ThumbsUp, Tag } from "lucide-react";
+import { AlertTriangle, AlertCircle, Info, ThumbsUp, Tag, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
-const typeIcon: Record<string, any> = {
+const typeIcon: Record<string, LucideIcon> = {
   stage_stall: AlertTriangle,
   promise_risk: AlertCircle,
   approval_requested: ThumbsUp,

@@ -34,12 +34,12 @@ export default function UnitCommentsCard({ unitId, dealerId }: Props) {
     queryKey: ["unit-comments", unitId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("unit_comments" as any)
+        .from("unit_comments" as never)
         .select("*, profiles:user_id(full_name, email)")
         .eq("unit_id", unitId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as any[] as UnitComment[];
+      return data as unknown as UnitComment[];
     },
   });
 
@@ -59,7 +59,7 @@ export default function UnitCommentsCard({ unitId, dealerId }: Props) {
       setNewComment("");
       toast({ title: "Comment added" });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -110,7 +110,7 @@ export default function UnitCommentsCard({ unitId, dealerId }: Props) {
         ) : comments && comments.length > 0 ? (
           <div className="space-y-0">
             {comments.map((c, i) => {
-              const profile = c.profiles as any;
+              const profile = c.profiles;
               const name = profile?.full_name || profile?.email || "Unknown";
               return (
                 <div

@@ -196,12 +196,12 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
     queryKey: ["unit-photos", unitId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("unit_photos" as any)
+        .from("unit_photos" as never)
         .select("*")
         .eq("unit_id", unitId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as any[] as UnitPhoto[];
+      return data as unknown as UnitPhoto[];
     },
   });
 
@@ -314,7 +314,7 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
             file_name: file.name,
             category,
             uploaded_by: user?.id ?? null,
-          } as any),
+          }),
           });
           const _insJ = await _insRes.json().catch(() => null);
           const insertError = (!_insRes.ok || !_insJ?.ok) ? new Error(_insJ?.error || "Failed") : null;
@@ -326,8 +326,8 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
 
       queryClient.invalidateQueries({ queryKey: ["unit-photos", unitId] });
       toast({ title: `${files.length} photo${files.length > 1 ? "s" : ""} uploaded` });
-    } catch (err: any) {
-      toast({ title: "Upload error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Upload error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setUploadingCategory(null);
       Object.values(fileInputRefs.current).forEach((ref) => {
@@ -351,7 +351,7 @@ export default function RequiredPhotosTab({ unitId, dealerId }: Props) {
       queryClient.invalidateQueries({ queryKey: ["unit-photos", unitId] });
       toast({ title: "Photo deleted" });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -658,18 +658,18 @@ export function useRequiredPhotosComplete(unitId: string) {
     queryKey: ["unit-photos", unitId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("unit_photos" as any)
+        .from("unit_photos" as never)
         .select("category")
         .eq("unit_id", unitId);
       if (error) throw error;
-      return data as any[];
+      return data as unknown as { category: string }[];
     },
     enabled: !!unitId,
   });
 
   const requiredCats = REQUIRED_CATEGORIES.filter((c) => !c.optional && !c.conditional);
   const complete = requiredCats.every((cat) => {
-    const count = photos?.filter((p: any) => p.category === cat.key).length ?? 0;
+    const count = photos?.filter((p) => p.category === cat.key).length ?? 0;
     return count >= cat.required;
   });
 

@@ -8,8 +8,14 @@ import { format } from "date-fns";
 import { Pencil, Save, X } from "lucide-react";
 import IntakeOptionsForm from "./IntakeOptionsForm";
 
+interface Unit {
+  id: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
 interface Props {
-  unit: any;
+  unit: Unit;
   readOnly?: boolean;
 }
 
@@ -49,7 +55,7 @@ export default function EditableIntakeCard({ unit, readOnly = false }: Props) {
 
   const handleSave = async () => {
     try {
-      const payload: any = { id: unit.id };
+      const payload: { id: string } & Record<string, unknown> = { id: unit.id };
       FIELDS.forEach((f) => {
         const val = form[f.key]?.trim() || null;
         if (f.key === "year") {
@@ -61,8 +67,8 @@ export default function EditableIntakeCard({ unit, readOnly = false }: Props) {
       await updateUnit.mutateAsync(payload);
       toast({ title: "Intake updated" });
       setEditing(false);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 

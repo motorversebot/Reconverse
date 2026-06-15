@@ -15,11 +15,20 @@ import { ChevronDown, Save, Loader2, Wand2, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { mapVinDecodeToIntake, mergeDecodeIntoIntake } from "@/lib/vinToIntakeMapping";
 
-interface Props {
-  unit: any;
+type IntakeMeta = Record<string, unknown>;
+
+interface Unit {
+  id: string;
+  intake_meta?: IntakeMeta | null;
+  vin_decode_raw?: Record<string, string> | null;
 }
 
-type IntakeMeta = Record<string, any>;
+// Read a meta value as a string for controlled string inputs/selects
+const metaStr = (v: unknown): string => (v == null ? "" : String(v));
+
+interface Props {
+  unit: Unit;
+}
 
 // Radio-style option group
 function OptionGroup({
@@ -120,7 +129,7 @@ export default function IntakeOptionsForm({ unit }: Props) {
     const currentMeta = unit.intake_meta ?? {};
     setMeta(currentMeta);
     setDirty(false);
-    setOverrides(new Set(currentMeta._manual_overrides ?? []));
+    setOverrides(new Set((currentMeta._manual_overrides as string[] | undefined) ?? []));
 
     // Auto-fill from VIN decode on first load if not yet applied
     if (
@@ -137,7 +146,7 @@ export default function IntakeOptionsForm({ unit }: Props) {
     initializedRef.current = unit.id;
   }, [unit.id, unit.intake_meta, unit.vin_decode_raw, hasDecodeData]);
 
-  const set = useCallback((key: string, val: any) => {
+  const set = useCallback((key: string, val: unknown) => {
     setMeta((prev) => ({ ...prev, [key]: val }));
     setOverrides((prev) => { const next = new Set(prev); next.add(key); return next; });
     setDirty(true);
@@ -167,11 +176,11 @@ export default function IntakeOptionsForm({ unit }: Props) {
   const handleSave = async () => {
     try {
       const saveMeta = { ...meta, _manual_overrides: Array.from(overrides) };
-      await updateUnit.mutateAsync({ id: unit.id, ...({ intake_meta: saveMeta } as any) });
+      await updateUnit.mutateAsync({ id: unit.id, intake_meta: saveMeta });
       toast({ title: "Intake options saved" });
       setDirty(false);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -231,11 +240,11 @@ export default function IntakeOptionsForm({ unit }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Date In</Label>
-            <Input type="date" value={meta.date_in ?? ""} onChange={(e) => set("date_in", e.target.value)} className="h-9 text-sm" />
+            <Input type="date" value={metaStr(meta.date_in)} onChange={(e) => set("date_in", e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Source</Label>
-            <Select value={meta.acquisition_source ?? ""} onValueChange={(v) => set("acquisition_source", v)}>
+            <Select value={metaStr(meta.acquisition_source)} onValueChange={(v) => set("acquisition_source", v)}>
               <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select source" /></SelectTrigger>
               <SelectContent>
                 {["Retail", "Wholesale", "Auction", "Trade-In", "eBay", "Other"].map((s) => (
@@ -244,23 +253,23 @@ export default function IntakeOptionsForm({ unit }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <OptionGroup label="CARFAX" options={["Yes", "No"]} value={meta.carfax ?? ""} onChange={(v) => set("carfax", v)} />
+          <OptionGroup label="CARFAX" options={["Yes", "No"]} value={metaStr(meta.carfax)} onChange={(v) => set("carfax", v)} />
           <ToggleRow label="Books Present" checked={!!meta.books_present} onChange={(v) => set("books_present", v)} />
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Spare Keys</Label>
-            <Input type="number" min={0} value={meta.spare_keys ?? ""} onChange={(e) => set("spare_keys", parseInt(e.target.value) || 0)} className="h-9 text-sm w-24" />
+            <Input type="number" min={0} value={metaStr(meta.spare_keys)} onChange={(e) => set("spare_keys", parseInt(e.target.value) || 0)} className="h-9 text-sm w-24" />
           </div>
-          <OptionGroup label="Interior Material" options={["Cloth", "Leather"]} value={meta.interior_material ?? ""} onChange={(v) => set("interior_material", v)} />
+          <OptionGroup label="Interior Material" options={["Cloth", "Leather"]} value={metaStr(meta.interior_material)} onChange={(v) => set("interior_material", v)} />
         </div>
       </Section>
 
       {/* 2. VEHICLE CONFIGURATION */}
       <Section title="Vehicle Configuration">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-          <OptionGroup label="Body Type" options={["2 Door", "3 Door", "4 Door", "Truck", "SUV", "Van"]} value={meta.body_type ?? ""} onChange={(v) => set("body_type", v)} />
-          <OptionGroup label="Engine" options={["4 Cyl", "V6", "V8", "V10"]} value={meta.engine_type ?? ""} onChange={(v) => set("engine_type", v)} />
-          <OptionGroup label="Transmission" options={["Automatic", "4 Speed", "5 Speed", "6 Speed"]} value={meta.transmission_type ?? ""} onChange={(v) => set("transmission_type", v)} />
-          <OptionGroup label="Mileage Type" options={["5 Digit", "6 Digit"]} value={meta.mileage_type ?? ""} onChange={(v) => set("mileage_type", v)} />
+          <OptionGroup label="Body Type" options={["2 Door", "3 Door", "4 Door", "Truck", "SUV", "Van"]} value={metaStr(meta.body_type)} onChange={(v) => set("body_type", v)} />
+          <OptionGroup label="Engine" options={["4 Cyl", "V6", "V8", "V10"]} value={metaStr(meta.engine_type)} onChange={(v) => set("engine_type", v)} />
+          <OptionGroup label="Transmission" options={["Automatic", "4 Speed", "5 Speed", "6 Speed"]} value={metaStr(meta.transmission_type)} onChange={(v) => set("transmission_type", v)} />
+          <OptionGroup label="Mileage Type" options={["5 Digit", "6 Digit"]} value={metaStr(meta.mileage_type)} onChange={(v) => set("mileage_type", v)} />
           <ToggleRow label="VIN Plate Missing" checked={!!meta.vin_plate_missing} onChange={(v) => set("vin_plate_missing", v)} />
           <ToggleRow label="Frame Damage Indicator" checked={!!meta.frame_damage} onChange={(v) => set("frame_damage", v)} />
         </div>
@@ -293,16 +302,16 @@ export default function IntakeOptionsForm({ unit }: Props) {
               ))}
             </div>
           </div>
-          <OptionGroup label="Seating Capacity" options={SEATING_OPTIONS} value={meta.seating_capacity ?? ""} onChange={(v) => set("seating_capacity", v)} />
+          <OptionGroup label="Seating Capacity" options={SEATING_OPTIONS} value={metaStr(meta.seating_capacity)} onChange={(v) => set("seating_capacity", v)} />
         </div>
       </Section>
 
       {/* 4. CONDITION QUICK RATING */}
       <Section title="Condition Rating">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-          <ConditionRating label="Paint" value={meta.cond_paint ?? ""} onChange={(v) => set("cond_paint", v)} />
-          <ConditionRating label="Tires" value={meta.cond_tires ?? ""} onChange={(v) => set("cond_tires", v)} />
-          <ConditionRating label="Interior" value={meta.cond_interior ?? ""} onChange={(v) => set("cond_interior", v)} />
+          <ConditionRating label="Paint" value={metaStr(meta.cond_paint)} onChange={(v) => set("cond_paint", v)} />
+          <ConditionRating label="Tires" value={metaStr(meta.cond_tires)} onChange={(v) => set("cond_tires", v)} />
+          <ConditionRating label="Interior" value={metaStr(meta.cond_interior)} onChange={(v) => set("cond_interior", v)} />
         </div>
       </Section>
 

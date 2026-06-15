@@ -95,7 +95,7 @@ export default function TireWheelInspection({ unitId, dealerId, readOnly = false
     currentPos: string,
     nextRefs?: React.MutableRefObject<Record<string, HTMLInputElement | null>>
   ) => {
-    const idx = POSITIONS.indexOf(currentPos as any);
+    const idx = POSITIONS.indexOf(currentPos as (typeof POSITIONS)[number]);
     if (idx < POSITIONS.length - 1) {
       currentRefs.current[POSITIONS[idx + 1]]?.focus();
     } else if (nextRefs) {

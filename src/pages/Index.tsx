@@ -14,10 +14,12 @@ import {
   Activity,
   Users,
   Smartphone,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PLANS } from "@/lib/plans";
 
 /* ── Pipeline stages used in the centerpiece ── */
 const STAGES = [
@@ -42,6 +44,12 @@ function Nav() {
           <span className="font-mono font-bold tracking-widest text-foreground text-base uppercase">Reconverse</span>
         </Link>
         <div className="flex items-center gap-6">
+          <a
+            href="#pricing"
+            className="hidden sm:inline text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Pricing
+          </a>
           <Link
             id="nav-signin-link"
             to="/login"
@@ -419,6 +427,74 @@ function ValueStrip() {
   );
 }
 
+/* ── Pricing ── */
+function PricingSection() {
+  return (
+    <section id="pricing" className="relative py-16 sm:py-20 border-b border-border bg-background scroll-mt-20">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mb-3">
+            Pricing
+          </p>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground uppercase">
+            One pipeline, per rooftop
+          </h2>
+          <p className="mt-4 text-xs text-muted-foreground max-w-xl mx-auto leading-relaxed">
+            Every plan includes the full recon pipeline. Scale seats and unit volume as you grow.
+            Start with a free trial — no card required to explore.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PLANS.map((plan) => (
+            <div
+              key={plan.key}
+              className={cn(
+                "flex flex-col border p-6 bg-card",
+                plan.popular ? "border-foreground" : "border-border"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-mono font-bold uppercase tracking-widest text-foreground">
+                  {plan.name}
+                </h3>
+                {plan.popular && (
+                  <span className="text-[9px] font-mono uppercase tracking-wider border border-foreground px-2 py-0.5 text-foreground">
+                    Popular
+                  </span>
+                )}
+              </div>
+              <p className="mt-4 text-3xl font-bold text-foreground">
+                ${plan.priceMonthly.toLocaleString()}
+                <span className="text-xs font-mono font-normal text-muted-foreground">/mo</span>
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{plan.tagline}</p>
+              <ul className="mt-5 flex-1 space-y-2.5">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-xs text-foreground/80">
+                    <Check className="h-3.5 w-3.5 mt-0.5 shrink-0 text-foreground/50" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                asChild
+                className={cn(
+                  "mt-6 rounded-none text-xs font-mono uppercase tracking-wider h-11",
+                  plan.popular
+                    ? "border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground"
+                    : "border border-border bg-transparent text-foreground hover:bg-neutral-900"
+                )}
+              >
+                <Link to="/login">Start Free Trial</Link>
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── Final Call To Action ── */
 function FinalCTA() {
   return (
@@ -531,6 +607,7 @@ const Index = () => {
       <PipelineSection />
       <Features />
       <ValueStrip />
+      <PricingSection />
       <FinalCTA />
       <LandingFooter />
     </div>

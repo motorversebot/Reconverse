@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Car, Users, Settings, LogOut, ArrowLeft,
   ChevronLeft, ChevronRight, Menu, BarChart3,
   ClipboardCheck, Calculator, ThumbsUp, Wrench, ShieldCheck, Tag,
-  Layers, Home, Bell
+  Layers, Home, Bell, CreditCard
 } from "lucide-react";
 import { NotificationBell } from "@/components/dealer/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ const reconLaneItems = [
 
 const adminItems = [
   { to: "/dealer/users", icon: Users, label: "Users" },
+  { to: "/dealer/billing", icon: CreditCard, label: "Billing" },
   { to: "/dealer/settings", icon: Settings, label: "Settings" },
 ];
 

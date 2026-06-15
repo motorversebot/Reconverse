@@ -100,19 +100,19 @@ export default function UnitKanban({ units, onViewUnit }: Props) {
 
     // Optimistic update
     const previousUnits = queryClient.getQueryData(["dealer-units", unit.dealer_id as string]);
-    queryClient.setQueryData(["dealer-units", (unit as any).dealer_id], (old: any[]) =>
-      old?.map((u: any) => (u.id === unitId ? { ...u, status: targetStage, updated_at: new Date().toISOString() } : u))
+    queryClient.setQueryData(["dealer-units", unit.dealer_id], (old: Unit[] | undefined) =>
+      old?.map((u) => (u.id === unitId ? { ...u, status: targetStage, updated_at: new Date().toISOString() } : u))
     );
 
     try {
       await updateUnit.mutateAsync({ id: unitId, status: targetStage });
       toast({ title: `Moved to ${targetStage}` });
-    } catch (err: any) {
+    } catch (err) {
       // Rollback
       if (previousUnits) {
-        queryClient.setQueryData(["dealer-units", (unit as any).dealer_id], previousUnits);
+        queryClient.setQueryData(["dealer-units", unit.dealer_id], previousUnits);
       }
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 

@@ -55,8 +55,8 @@ export default function DealerSettingsPage() {
       .then((j) => { const data = j?.ok ? j.data.user : null;
         if (data) {
           setDisplayName(data.full_name ?? "");
-          setUsername((data as any).username ?? "");
-          setUsernameReadOnly(!!(data as any).username);
+          setUsername((data as { username?: string }).username ?? "");
+          setUsernameReadOnly(!!(data as { username?: string }).username);
         }
       });
   }, [user]);

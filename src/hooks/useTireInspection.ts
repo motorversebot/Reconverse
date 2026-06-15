@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, rvPost, rvPatch } from "@/lib/api";
 
+export interface TireInspection {
+  id: string;
+  [key: string]: unknown;
+}
+
 export function useTireInspection(unitId: string | undefined, dealerId: string | undefined) {
   const qc = useQueryClient();
 
@@ -10,7 +15,7 @@ export function useTireInspection(unitId: string | undefined, dealerId: string |
       const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/tire-inspection`);
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) return null;
-      return j.data as any;
+      return j.data as TireInspection | null;
     },
     enabled: !!unitId && !!dealerId,
   });

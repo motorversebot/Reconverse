@@ -6,8 +6,27 @@ import UnitPhotos from "@/components/dealer/UnitPhotos";
 import InspectionChecklist from "@/components/dealer/InspectionChecklist";
 import PlaceholderSection from "@/components/dealer/PlaceholderSection";
 
+interface Unit {
+  id: string;
+  dealer_id: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  vin?: string | null;
+  stock_number?: string | null;
+  year?: number | string | null;
+  make?: string | null;
+  model?: string | null;
+  trim?: string | null;
+  color?: string | null;
+  engine?: string | null;
+  body?: string | null;
+  drive_type?: string | null;
+  transmission?: string | null;
+}
+
 interface Props {
-  unit: any;
+  unit: Unit;
   status: UnitStatus;
 }
 

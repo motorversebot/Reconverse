@@ -19,7 +19,7 @@ export function useReportsData(range: DateRange) {
   });
 }
 
-export function downloadCSV(filename: string, rows: Record<string, any>[]) {
+export function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
   if (!rows.length) return;
   const keys = Object.keys(rows[0]);
   const csv = [

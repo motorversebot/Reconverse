@@ -1,4 +1,4 @@
-import { Bell, AlertTriangle, AlertCircle, Info, ThumbsUp, Tag } from "lucide-react";
+import { Bell, AlertTriangle, AlertCircle, Info, ThumbsUp, Tag, type LucideIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
 
-const typeIcon: Record<string, any> = {
+const typeIcon: Record<string, LucideIcon> = {
   stage_stall: AlertTriangle,
   promise_risk: AlertCircle,
   approval_requested: ThumbsUp,

@@ -122,7 +122,7 @@ export function useEstimate(unitId: string | undefined, dealerId: string | undef
       const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/estimate`);
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) return null;
-      return j.data as any;
+      return j.data as Estimate | null;
     },
     enabled: !!unitId && !!dealerId,
   });
@@ -135,7 +135,7 @@ export function useEstimateOperations(estimateId: string | undefined) {
       const res = await apiFetch(`/api/v1/reconverse/estimates/${estimateId}/operations`);
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) return [];
-      return j.data.operations as any[];
+      return j.data.operations as EstimateOperation[];
     },
     enabled: !!estimateId,
   });
@@ -148,7 +148,7 @@ export function useEstimateItems(operationId: string | undefined) {
       const res = await apiFetch(`/api/v1/reconverse/operations/${operationId}/items`);
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) return [];
-      return j.data.items as any[];
+      return j.data.items as EstimateItem[];
     },
     enabled: !!operationId,
   });
@@ -158,7 +158,7 @@ export function useCreateEstimate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { unit_id: string; dealer_id: string }) => {
-      const result = await rvPost<{ estimate: any }>("/estimates", payload);
+      const result = await rvPost<{ estimate: Estimate }>("/estimates", payload);
       if (!result.ok) throw new Error(result.error);
       return result.data.estimate;
     },
@@ -170,7 +170,7 @@ export function useUpdateEstimate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
-      const result = await rvPatch<{ estimate: any }>(`/estimates/${id}`, payload);
+      const result = await rvPatch<{ estimate: Estimate }>(`/estimates/${id}`, payload);
       if (!result.ok) throw new Error(result.error);
       return result.data.estimate;
     },
@@ -182,7 +182,7 @@ export function useCreateOperation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
-      const result = await rvPost<{ operation: any }>("/estimate-operations", payload);
+      const result = await rvPost<{ operation: EstimateOperation }>("/estimate-operations", payload);
       if (!result.ok) throw new Error(result.error);
       return result.data.operation;
     },
@@ -194,7 +194,7 @@ export function useUpdateOperation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
-      const result = await rvPatch<{ operation: any }>(`/estimate-operations/${id}`, payload);
+      const result = await rvPatch<{ operation: EstimateOperation }>(`/estimate-operations/${id}`, payload);
       if (!result.ok) throw new Error(result.error);
       return result.data.operation;
     },
@@ -217,7 +217,7 @@ export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
-      const result = await rvPost<{ item: any }>("/estimate-items", payload);
+      const result = await rvPost<{ item: EstimateItem }>("/estimate-items", payload);
       if (!result.ok) throw new Error(result.error);
       return result.data.item;
     },
@@ -229,7 +229,7 @@ export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...payload }: { id: string } & Record<string, unknown>) => {
-      const result = await rvPatch<{ item: any }>(`/estimate-items/${id}`, payload);
+      const result = await rvPatch<{ item: EstimateItem }>(`/estimate-items/${id}`, payload);
       if (!result.ok) throw new Error(result.error);
       return result.data.item;
     },
@@ -252,7 +252,7 @@ export function useConvertToWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { estimate_id: string; unit_id: string; dealer_id: string }) => {
-      const result = await rvPost<{ work_order: any }>("/work-orders", payload);
+      const result = await rvPost<{ work_order: WorkOrder }>("/work-orders", payload);
       if (!result.ok) throw new Error(result.error);
       return result.data.work_order;
     },
@@ -267,7 +267,7 @@ export function useWorkOrderItems(unitId: string | undefined, dealerId: string |
       const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/work-order-items`);
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) return [];
-      return j.data.items as any[];
+      return j.data.items as WorkOrderItem[];
     },
     enabled: !!unitId && !!dealerId,
   });

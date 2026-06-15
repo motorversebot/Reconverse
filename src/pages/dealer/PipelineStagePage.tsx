@@ -9,6 +9,17 @@ import { SLUG_TO_STATUS, STAGE_META, type UnitStatus } from "@/lib/pipeline";
 import { format } from "date-fns";
 import { useState } from "react";
 
+interface PipelineUnit {
+  id: string;
+  status: string;
+  vin?: string | null;
+  stock_number?: string | null;
+  make?: string | null;
+  model?: string | null;
+  year?: number | string | null;
+  updated_at: string;
+}
+
 export default function PipelineStagePage() {
   const { stage } = useParams<{ stage: string }>();
   const navigate = useNavigate();
@@ -29,7 +40,7 @@ export default function PipelineStagePage() {
     );
   }
 
-  const filtered = (units ?? []).filter((u: any) => {
+  const filtered = ((units ?? []) as PipelineUnit[]).filter((u) => {
     if (u.status !== status) return false;
     if (!search) return true;
     const q = search.toLowerCase();
@@ -67,7 +78,7 @@ export default function PipelineStagePage() {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((unit: any) => {
+          {filtered.map((unit) => {
             const title = [unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "Untitled";
             return (
               <Card

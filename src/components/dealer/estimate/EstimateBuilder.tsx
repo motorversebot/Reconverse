@@ -75,14 +75,14 @@ export default function EstimateBuilder({ unitId, dealerId, readOnly = false, on
 
   const handleSubmit = async () => {
     if (!estimate) return;
-    await updateEstimate.mutateAsync({ id: estimate.id, status: "submitted" as any });
+    await updateEstimate.mutateAsync({ id: estimate.id, status: "submitted" });
     setSubmitOpen(false);
   };
 
   const handleRevise = async () => {
     if (!estimate) return;
     // Create a new version by duplicating — simplified: just reset to draft for now
-    await updateEstimate.mutateAsync({ id: estimate.id, status: "draft" as any });
+    await updateEstimate.mutateAsync({ id: estimate.id, status: "draft" });
   };
 
   if (isLoading) {
@@ -141,7 +141,7 @@ export default function EstimateBuilder({ unitId, dealerId, readOnly = false, on
                 type="number"
                 className="h-8 text-xs mt-1"
                 defaultValue={estimate.labor_rate_default}
-                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, labor_rate_default: parseFloat(e.target.value) || 125 } as any)}
+                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, labor_rate_default: parseFloat(e.target.value) || 125 })}
               />
             </div>
             <div>
@@ -150,7 +150,7 @@ export default function EstimateBuilder({ unitId, dealerId, readOnly = false, on
                 type="number"
                 className="h-8 text-xs mt-1"
                 defaultValue={(estimate.tax_rate_default * 100).toFixed(2)}
-                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, tax_rate_default: (parseFloat(e.target.value) || 8) / 100 } as any)}
+                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, tax_rate_default: (parseFloat(e.target.value) || 8) / 100 })}
               />
             </div>
             <div>
@@ -159,7 +159,7 @@ export default function EstimateBuilder({ unitId, dealerId, readOnly = false, on
                 type="number"
                 className="h-8 text-xs mt-1"
                 defaultValue={(estimate.shop_supplies_percent * 100).toFixed(2)}
-                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, shop_supplies_percent: (parseFloat(e.target.value) || 5) / 100 } as any)}
+                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, shop_supplies_percent: (parseFloat(e.target.value) || 5) / 100 })}
               />
             </div>
             <div>
@@ -172,7 +172,7 @@ export default function EstimateBuilder({ unitId, dealerId, readOnly = false, on
                   id: estimate.id,
                   discount_value: parseFloat(e.target.value) || 0,
                   discount_type: (parseFloat(e.target.value) || 0) > 0 ? "amount" : "none",
-                } as any)}
+                })}
               />
             </div>
           </div>
@@ -216,7 +216,7 @@ export default function EstimateBuilder({ unitId, dealerId, readOnly = false, on
                 className="mt-1 text-xs min-h-[60px] print:hidden"
                 defaultValue={estimate.notes_internal || ""}
                 placeholder="Internal recon notes..."
-                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, notes_internal: e.target.value } as any)}
+                onBlur={(e) => updateEstimate.mutate({ id: estimate.id, notes_internal: e.target.value })}
               />
             </div>
           )}

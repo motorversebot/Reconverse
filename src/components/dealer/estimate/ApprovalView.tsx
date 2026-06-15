@@ -73,7 +73,7 @@ export default function ApprovalView({ unitId, dealerId, unit, onStageAdvance }:
     else newStatus = "submitted"; // all pending again
 
     if (newStatus !== estimate.status) {
-      await updateEstimate.mutateAsync({ id: estimate.id, status: newStatus as any });
+      await updateEstimate.mutateAsync({ id: estimate.id, status: newStatus });
     }
   };
 
@@ -100,7 +100,7 @@ export default function ApprovalView({ unitId, dealerId, unit, onStageAdvance }:
         }
       }
     }
-    await updateEstimate.mutateAsync({ id: estimate.id, status: "approved" as any });
+    await updateEstimate.mutateAsync({ id: estimate.id, status: "approved" });
   };
 
   const handleReturnToEstimate = async () => {
@@ -126,7 +126,7 @@ export default function ApprovalView({ unitId, dealerId, unit, onStageAdvance }:
 
     // Save decision notes if any
     if (decisionNotes.trim()) {
-      await updateEstimate.mutateAsync({ id: estimate.id, notes_internal: decisionNotes } as any);
+      await updateEstimate.mutateAsync({ id: estimate.id, notes_internal: decisionNotes });
     }
 
     await createWorkOrder.mutateAsync({

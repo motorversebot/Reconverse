@@ -3,4 +3,4 @@
 // This stub remains to satisfy any stale imports during cleanup. If you find code
 // importing { supabase } from here, port it to apiFetch / rvFetch from @/lib/api.
 
-export const supabase = null as any;
+export const supabase = null as unknown;

@@ -65,9 +65,9 @@ export interface EnrichedUnit extends DashboardUnit {
   blockers: string[];
 }
 
-import { getLocalMockUnits } from "./useDealerData";
+import { getLocalMockUnits, type DealerUnit } from "./useDealerData";
 
-function computeLocalDashboardData(dealerId: string, units: any[]) {
+function computeLocalDashboardData(dealerId: string, units: DealerUnit[]) {
   const activeUnitsList = units.filter(u => !u.is_deleted && u.status !== "sold");
   
   const enrichedUnits: EnrichedUnit[] = activeUnitsList.map(u => {
@@ -181,7 +181,7 @@ function computeLocalDashboardData(dealerId: string, units: any[]) {
     };
   });
   
-  const throughput: any[] = [];
+  const throughput: { date: string; added: number; completed: number }[] = [];
   for (let i = 13; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const dateStr = date.toISOString().split("T")[0];
@@ -219,7 +219,7 @@ export function useDashboardData(dealerId?: string) {
       } catch (err) {
         console.warn("apiFetch failed for dashboard, computing client side", err);
       }
-      const units = getLocalMockUnits(dealerId);
+      const units = getLocalMockUnits(dealerId) as unknown as DealerUnit[];
       return computeLocalDashboardData(dealerId, units);
     },
     enabled: !!dealerId,

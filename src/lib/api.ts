@@ -68,7 +68,7 @@ export function getRememberPreference(): boolean {
 
 export function setRememberSession(remember: boolean) {
   if (typeof window === 'undefined') return;
-  try { window.localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0'); } catch {}
+  try { window.localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0'); } catch { /* ignore */ }
 }
 
 // --- Auth-lost hook ------------------------------------------------------
@@ -240,4 +240,31 @@ export async function rvDelete(
   const j = await res.json().catch(() => null);
   if (!res.ok || !j?.ok) return { ok: false, error: j?.error || `http_${res.status}` };
   return { ok: true };
+}
+
+// --- Billing (Square) ----------------------------------------------------
+// These hit the same-origin Vercel serverless functions in api/billing/*,
+// which talk to Square server-side. apiFetch attaches the bearer token so the
+// function can identify the dealer.
+
+export async function startCheckout(
+  planKey: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const res = await apiFetch('/api/billing/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan: planKey }),
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok || !j?.ok || !j?.url) return { ok: false, error: j?.error || `http_${res.status}` };
+  return { ok: true, url: j.url as string };
+}
+
+export async function openBillingPortal(): Promise<
+  { ok: true; url: string } | { ok: false; error: string }
+> {
+  const res = await apiFetch('/api/billing/portal', { method: 'POST' });
+  const j = await res.json().catch(() => null);
+  if (!res.ok || !j?.ok || !j?.url) return { ok: false, error: j?.error || `http_${res.status}` };
+  return { ok: true, url: j.url as string };
 }

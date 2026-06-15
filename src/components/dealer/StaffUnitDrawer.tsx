@@ -27,8 +27,21 @@ const CATEGORY_LABELS: Record<string, string> = {
   undercarriage: "Undercarriage",
 };
 
+interface DrawerUnit {
+  id: string;
+  status?: UnitStatus | string | null;
+  vin?: string | null;
+  stock_number?: string | null;
+  year?: number | string | null;
+  make?: string | null;
+  model?: string | null;
+  trim?: string | null;
+  color?: string | null;
+  stage_entered_at: string;
+}
+
 interface Props {
-  unit: any;
+  unit: DrawerUnit | null | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -44,12 +57,12 @@ export default function StaffUnitDrawer({ unit, open, onOpenChange }: Props) {
     queryFn: async () => {
       if (!unit?.id) return [];
       const { data, error } = await supabase
-        .from("unit_photos" as any)
+        .from("unit_photos")
         .select("*")
         .eq("unit_id", unit.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as any[] as UnitPhoto[];
+      return (data ?? []) as unknown as UnitPhoto[];
     },
     enabled: open && !!unit?.id,
   });

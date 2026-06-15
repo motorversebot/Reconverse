@@ -188,8 +188,8 @@ export default function UnitDetailPage() {
       const nextMeta = STAGE_META[nextStatus];
       toast({ title: `Moved to ${nextMeta.label}` });
       setActiveTab(null);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -198,8 +198,8 @@ export default function UnitDetailPage() {
       await archiveUnit.mutateAsync(unit.id);
       toast({ title: "Vehicle archived" });
       navigate("/dealer/units");
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -226,8 +226,8 @@ export default function UnitDetailPage() {
         setTimeout(() => printWindow.print(), 400);
       }
       toast({ title: "PDF export ready" });
-    } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Export failed", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setExporting(false);
     }
@@ -300,7 +300,7 @@ export default function UnitDetailPage() {
       {!staffOnly && currentStatus !== "sold" && (
         <PromiseDatePicker
           unitId={unit.id}
-          promiseDate={(unit as any).promise_date ?? null}
+          promiseDate={unit.promise_date ?? null}
         />
       )}
 
@@ -479,8 +479,8 @@ function PromiseDatePicker({ unitId, promiseDate }: { unitId: string; promiseDat
       await updateUnit.mutateAsync({ id: unitId, promise_date: value });
       toast({ title: value ? `Promise date set to ${format(date!, "MMM d, yyyy")}` : "Promise date cleared" });
       setOpen(false);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 

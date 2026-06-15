@@ -12,6 +12,14 @@ import { Plus, KeyRound, UserMinus } from "lucide-react";
 import { format } from "date-fns";
 import { canManageUsers, roleLabel, ASSIGNABLE_ROLES, type DealerRole } from "@/lib/permissions";
 
+interface DealerMember {
+  user_id: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  profiles?: { full_name?: string | null; email?: string | null } | null;
+}
+
 export default function DealerUsersPage() {
   const { data: membership } = useCurrentDealer();
   const dealerId = membership?.dealer_id ?? "";
@@ -44,8 +52,8 @@ export default function DealerUsersPage() {
       toast({ title: "User created", description: `${newEmail} added as ${roleLabel(newRole)}` });
       setCreateOpen(false);
       setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("staff");
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -55,8 +63,8 @@ export default function DealerUsersPage() {
       toast({ title: "Password reset successfully" });
       setResetOpen(false);
       setResetPw("");
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -65,8 +73,8 @@ export default function DealerUsersPage() {
     try {
       await removeUser.mutateAsync({ dealer_id: dealerId, user_id: userId });
       toast({ title: "User removed" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -98,7 +106,7 @@ export default function DealerUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members?.map((m: any) => (
+              {members?.map((m: DealerMember) => (
                 <TableRow key={m.user_id}>
                   <TableCell className="font-medium">{m.profiles?.full_name || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{m.profiles?.email}</TableCell>
@@ -179,7 +187,7 @@ export default function DealerUsersPage() {
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Role</label>
-              <Select value={newRole} onValueChange={(v: any) => setNewRole(v)}>
+              <Select value={newRole} onValueChange={(v) => setNewRole(v as DealerRole)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ASSIGNABLE_ROLES.map((r) => (

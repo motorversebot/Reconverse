@@ -78,6 +78,15 @@ Every tenant-scoped table is gated by RLS via `is_dealer_member(dealer_id)` / `i
 - `/platform/*` — platform admin (god mode)
 - `/dealer/*` — dealer workspace
 - `/dealer/recon-lane/:stage` — Recon Lane stage views (`mpi`, `estimate`, `approval`, `repair`, `qc`, `ready-for-sale`)
+- `/dealer/billing` — subscription management (owner/admin only)
+
+## Billing
+
+Reconverse sells per-rooftop subscriptions via **Square**. The plan catalog +
+entitlement logic live in `src/lib/plans.ts`; the in-app billing page is at
+`/dealer/billing` and a public pricing section is on the landing page. Checkout,
+webhook, and "manage" run as Vercel serverless functions in `api/billing/*`.
+See `docs/BILLING.md` for the env vars and the MC contract.
 
 ## Project rules
 

@@ -119,11 +119,11 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
     queryKey: ["inspection-items", unitId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("unit_inspection_items" as any)
+        .from("unit_inspection_items" as never)
         .select("*")
         .eq("unit_id", unitId);
       if (error) throw error;
-      return data as any[] as InspectionItem[];
+      return data as unknown as InspectionItem[];
     },
   });
 
@@ -207,7 +207,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inspection-items", unitId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -235,7 +235,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inspection-items", unitId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });

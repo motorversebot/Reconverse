@@ -248,7 +248,7 @@ export default function RepairView({ unitId, dealerId, onStageAdvance }: Props) 
             {/* Filter */}
             <div className="flex items-center gap-1 ml-auto">
               <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-              <Select value={filterMode} onValueChange={(v) => setFilterMode(v as any)}>
+              <Select value={filterMode} onValueChange={(v) => setFilterMode(v as "all" | "open" | "done")}>
                 <SelectTrigger className="h-7 w-[100px] border-0 bg-transparent text-xs p-0 shadow-none focus:ring-0">
                   <SelectValue />
                 </SelectTrigger>

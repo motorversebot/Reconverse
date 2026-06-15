@@ -18,7 +18,7 @@ import { apiFetch } from "@/lib/api";
 import { isStaffOnly } from "@/lib/permissions";
 import StaffUnitDrawer from "@/components/dealer/StaffUnitDrawer";
 
-import { ALL_STATUSES, STAGE_META } from "@/lib/pipeline";
+import { ALL_STATUSES, STAGE_META, type UnitStatus } from "@/lib/pipeline";
 import { hoursInStage, formatAgingDuration, agingColor, AGING_COLORS } from "@/hooks/useStageAging";
 
 const STATUSES = ALL_STATUSES.map((s) => s);
@@ -50,6 +50,27 @@ interface DecodedData {
   transmission: string | null;
 }
 
+interface Unit {
+  id: string;
+  vin?: string | null;
+  stock_number?: string | null;
+  make?: string | null;
+  model?: string | null;
+  year?: number | string | null;
+  color?: string | null;
+  notes?: string | null;
+  status: UnitStatus;
+  trim?: string | null;
+  engine?: string | null;
+  body?: string | null;
+  drive_type?: string | null;
+  transmission?: string | null;
+  stage_entered_at: string;
+  promise_date?: string | null;
+  created_at: string;
+  deleted_at?: string | null;
+}
+
 const emptyForm: UnitForm = {
   vin: "", stock_number: "", make: "", model: "", year: "",
   color: "", notes: "", status: "inspection", trim: "", engine: "",
@@ -69,7 +90,7 @@ export default function DealerUnitsPage() {
   const restoreUnit = useRestoreUnit();
   const { toast } = useToast();
   const isAdmin = membership?.role === "dealer_admin";
-  const [drawerUnit, setDrawerUnit] = useState<any>(null);
+  const [drawerUnit, setDrawerUnit] = useState<Unit | null>(null);
   const [activeTab, setActiveTab] = useState("active");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string>("created_at");
@@ -87,7 +108,7 @@ export default function DealerUnitsPage() {
   const [rawOpen, setRawOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const filterUnits = (list: any[] | undefined) => list?.filter((u) => {
+  const filterUnits = (list: Unit[] | undefined) => list?.filter((u) => {
     const q = search.toLowerCase();
     return (
       (u.vin?.toLowerCase().includes(q)) ||
@@ -102,10 +123,10 @@ export default function DealerUnitsPage() {
     else { setSortKey(key); setSortDir("asc"); }
   };
 
-  const sortUnits = (list: any[] | undefined) => {
+  const sortUnits = (list: Unit[] | undefined) => {
     if (!list) return [];
     return [...list].sort((a, b) => {
-      let av: any, bv: any;
+      let av: string | number, bv: string | number;
       switch (sortKey) {
         case "vehicle": av = `${a.year ?? ""} ${a.make ?? ""} ${a.model ?? ""}`.trim().toLowerCase(); bv = `${b.year ?? ""} ${b.make ?? ""} ${b.model ?? ""}`.trim().toLowerCase(); break;
         case "stock_number": av = a.stock_number?.toLowerCase() ?? ""; bv = b.stock_number?.toLowerCase() ?? ""; break;
@@ -144,8 +165,8 @@ export default function DealerUnitsPage() {
     try {
       await restoreUnit.mutateAsync(id);
       toast({ title: "Vehicle restored" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -165,7 +186,7 @@ export default function DealerUnitsPage() {
     setModalOpen(true);
   };
 
-  const openEdit = (u: any) => {
+  const openEdit = (u: Unit) => {
     setEditingId(u.id);
     setForm({
       vin: u.vin || "", stock_number: u.stock_number || "", make: u.make || "",
@@ -243,7 +264,12 @@ export default function DealerUnitsPage() {
         video.srcObject = stream;
         await video.play();
 
-        const detector = new (window as any).BarcodeDetector({ formats: ["code_39", "code_128", "qr_code"] });
+        const BarcodeDetectorCtor = (window as unknown as {
+          BarcodeDetector: new (opts: { formats: string[] }) => {
+            detect: (source: CanvasImageSource) => Promise<{ rawValue: string }[]>;
+          };
+        }).BarcodeDetector;
+        const detector = new BarcodeDetectorCtor({ formats: ["code_39", "code_128", "qr_code"] });
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth || 640;
         canvas.height = video.videoHeight || 480;
@@ -273,7 +299,7 @@ export default function DealerUnitsPage() {
   };
 
   const handleSave = async () => {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       vin: form.vin || null,
       stock_number: form.stock_number || null,
       make: form.make || null,
@@ -314,8 +340,8 @@ export default function DealerUnitsPage() {
         setModalOpen(false);
         navigate(`/dealer/units/${newUnit.id}`);
       }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -412,9 +438,9 @@ export default function DealerUnitsPage() {
                         })()}
                       </TableCell>
                       <TableCell>
-                        {(u as any).promise_date ? (
-                          <span className={`text-xs tabular-nums ${(u as any).promise_date < new Date().toISOString().slice(0, 10) && u.status !== "ready" && u.status !== "sold" ? "text-red-400 font-semibold" : "text-muted-foreground"}`}>
-                            {format(new Date((u as any).promise_date + "T00:00:00"), "MMM d")}
+                        {u.promise_date ? (
+                          <span className={`text-xs tabular-nums ${u.promise_date < new Date().toISOString().slice(0, 10) && u.status !== "ready" && u.status !== "sold" ? "text-red-400 font-semibold" : "text-muted-foreground"}`}>
+                            {format(new Date(u.promise_date + "T00:00:00"), "MMM d")}
                           </span>
                         ) : <span className="text-muted-foreground/40">—</span>}
                       </TableCell>
@@ -455,7 +481,7 @@ export default function DealerUnitsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredArchived?.map((u: any) => (
+                    {filteredArchived?.map((u) => (
                       <TableRow key={u.id} className="opacity-70 hover:opacity-100 transition-opacity">
                         <TableCell className="font-medium">{u.year} {u.make} {u.model}</TableCell>
                         <TableCell className="text-muted-foreground">{u.stock_number || "—"}</TableCell>

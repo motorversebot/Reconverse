@@ -65,8 +65,8 @@ export default function SettingsPage() {
         .single();
       if (data) {
         setDisplayName(data.full_name ?? "");
-        setUsername((data as any).username ?? "");
-        setUsernameReadOnly(!!(data as any).username);
+        setUsername((data as { username?: string }).username ?? "");
+        setUsernameReadOnly(!!(data as { username?: string }).username);
       }
     };
     loadProfile();

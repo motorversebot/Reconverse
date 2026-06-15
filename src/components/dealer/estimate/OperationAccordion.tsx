@@ -69,7 +69,7 @@ export default function OperationAccordion({ operation, dealerId, readOnly, labo
     });
   };
 
-  const handleUpdateItem = async (id: string, field: string, value: any) => {
+  const handleUpdateItem = async (id: string, field: string, value: unknown) => {
     await updateItem.mutateAsync({ id, [field]: value });
   };
 
@@ -202,7 +202,7 @@ export default function OperationAccordion({ operation, dealerId, readOnly, labo
 function ItemRow({ item, readOnly, onUpdate, onDelete }: {
   item: EstimateItem;
   readOnly: boolean;
-  onUpdate: (id: string, field: string, value: any) => void;
+  onUpdate: (id: string, field: string, value: unknown) => void;
   onDelete: () => void;
 }) {
   const lineTotal = item.type === "labor" ? item.hours * item.labor_rate : item.qty * item.unit_price;

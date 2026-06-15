@@ -96,7 +96,7 @@ function formatDateGroup(date: Date): string {
 }
 
 /* ─── Metadata detail renderer ─── */
-function MetadataDetails({ metadata }: { metadata: Record<string, any> }) {
+function MetadataDetails({ metadata }: { metadata: Record<string, unknown> }) {
   const entries = Object.entries(metadata).filter(
     ([k]) => !["comment_id"].includes(k)
   );

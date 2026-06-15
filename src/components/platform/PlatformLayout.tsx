@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import motorverseLogo from "@/assets/motorverse-logo.png";
+import motorverseLogo from "@/assets/motorverse-logo.webp";
 
 const workspaceItems = [
   { to: "/platform", icon: LayoutDashboard, label: "Dashboard", end: true },

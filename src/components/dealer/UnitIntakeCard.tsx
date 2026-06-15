@@ -1,8 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 
+interface Unit {
+  vin?: string | null;
+  stock_number?: string | null;
+  year?: number | string | null;
+  make?: string | null;
+  model?: string | null;
+  trim?: string | null;
+  color?: string | null;
+  engine?: string | null;
+  body?: string | null;
+  drive_type?: string | null;
+  transmission?: string | null;
+  created_at: string;
+}
+
 interface Props {
-  unit: any;
+  unit: Unit;
 }
 
 function InfoRow({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {

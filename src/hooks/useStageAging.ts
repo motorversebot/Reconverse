@@ -40,7 +40,7 @@ export function useDealerAgingStats(dealerId?: string) {
       const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/stage-aging`);
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) return [];
-      return j.data.stats as any[];
+      return j.data.stats as unknown[];
     },
     enabled: !!dealerId,
   });

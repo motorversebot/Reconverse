@@ -14,6 +14,24 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, KeyRound } from "lucide-react";
 
+interface DealerUnit {
+  id: string;
+  stock_number?: string | null;
+  year?: number | string | null;
+  make?: string | null;
+  model?: string | null;
+  vin?: string | null;
+  status?: string | null;
+  created_at: string;
+}
+
+interface DealerMembership {
+  user_id: string;
+  role: string;
+  is_active: boolean;
+  profiles?: { full_name?: string | null; email?: string | null } | null;
+}
+
 export default function DealerDetail() {
   const { dealerId } = useParams<{ dealerId: string }>();
   const { data: dealer } = useDealerDetail(dealerId!);
@@ -49,8 +67,8 @@ export default function DealerDetail() {
       setShowCreateUser(false);
       setShowCreds({ email: userForm.email, password });
       setUserForm({ email: "", full_name: "", password: "", role: "dealer_staff" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -61,12 +79,12 @@ export default function DealerDetail() {
       setShowResetPw(null);
       setNewPw("");
       toast({ title: "Password reset", description: `New password: ${pw}` });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
-  const filteredUnits = units?.filter((u: any) => {
+  const filteredUnits = (units as DealerUnit[] | undefined)?.filter((u) => {
     if (!unitSearch) return true;
     const s = unitSearch.toLowerCase();
     return [u.make, u.model, u.vin, u.stock_number, String(u.year)].some((v) => v?.toLowerCase().includes(s));
@@ -137,7 +155,7 @@ export default function DealerDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {memberships?.map((m: any) => (
+                  {memberships?.map((m: DealerMembership) => (
                     <TableRow key={m.user_id}>
                       <TableCell className="font-medium">{m.profiles?.full_name || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{m.profiles?.email}</TableCell>
@@ -183,7 +201,7 @@ export default function DealerDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUnits?.map((u: any) => (
+                  {filteredUnits?.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-mono text-sm">{u.stock_number || "—"}</TableCell>
                       <TableCell className="font-medium">{u.year} {u.make} {u.model}</TableCell>

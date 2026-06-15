@@ -4,6 +4,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useDashboardStats, useRecentActivity } from "@/hooks/usePlatformData";
 import { format } from "date-fns";
 
+interface RecentUnit {
+  id: string;
+  year?: number | string | null;
+  make?: string | null;
+  model?: string | null;
+  dealers?: { name?: string | null } | null;
+  created_at: string;
+}
+
+interface RecentUser {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+  created_at: string;
+}
+
 const statCards = [
   { key: "totalDealers" as const, label: "Dealerships", icon: Building2 },
   { key: "totalUsers" as const, label: "Users", icon: Users },
@@ -53,7 +69,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {activity?.recentUnits.map((u: any) => (
+                {activity?.recentUnits.map((u: RecentUnit) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.year} {u.make} {u.model}</TableCell>
                     <TableCell className="text-muted-foreground">{u.dealers?.name}</TableCell>
@@ -82,7 +98,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {activity?.recentUsers.map((u: any) => (
+                {activity?.recentUsers.map((u: RecentUser) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
