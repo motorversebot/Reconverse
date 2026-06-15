@@ -60,68 +60,131 @@ function Nav() {
   );
 }
 
-/* ── Interactive ROI Savings Calculator ── */
-function ROICalculator() {
-  const [volume, setVolume] = useState<number>(30);
-  const [daysSaved, setDaysSaved] = useState<number>(3);
-  const holdingCost = 40; // $40 per day holding cost
+/* ── Animated Recon Phase Tracker ── */
+const PHASES = ["Intake", "MPI", "Estimate", "Approval", "Repair", "QC", "Ready"] as const;
 
-  const monthlySavings = volume * daysSaved * holdingCost;
-  const yearlySavings = monthlySavings * 12;
+const PHASE_DETAILS = [
+  {
+    vehicle: "2024 FORD F-150",
+    status: "INTAKE COMPLETE",
+    log: "VIN decoded successfully. Stock #F3920 registered. Initial check-in photos uploaded."
+  },
+  {
+    vehicle: "2023 TESLA MODEL Y",
+    status: "MPI CHECKLIST",
+    log: "Technician walk-around in progress. 42 mechanical and safety points evaluated."
+  },
+  {
+    vehicle: "2022 PORSCHE 911",
+    status: "ESTIMATE DRAFT",
+    log: "Advisor itemizing brake pads replacement. Sublet tire alignment added."
+  },
+  {
+    vehicle: "2021 TOYOTA RAV4",
+    status: "AWAITING APPROVAL",
+    log: "Estimate submitted to manager portal. $1,420 repair limit pending sign-off."
+  },
+  {
+    vehicle: "2020 CHEVROLET CORVETTE",
+    status: "REPAIR IN LANE",
+    log: "Mechanic assigned. Left front control arm installation ongoing. Part #9281-GM."
+  },
+  {
+    vehicle: "2025 NISSAN Z",
+    status: "QC PROGRESS",
+    log: "Post-repair alignment verified. Road test completed. Final safety signature pending."
+  },
+  {
+    vehicle: "2023 BMW 3-SERIES",
+    status: "READY FOR FRONT",
+    log: "Safety certificate generated. Vehicle detailing done. Transferred to front lot."
+  }
+];
+
+function ReconPhaseTracker() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % PHASES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeUnitInfo = PHASE_DETAILS[activeIndex];
+  const progress = (activeIndex / (PHASES.length - 1)) * 100;
 
   return (
     <div className="border border-border p-6 sm:p-8 max-w-md w-full bg-card relative">
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
-        <h3 className="text-xs font-mono uppercase tracking-wider text-foreground font-bold">RECON SAVINGS CALCULATOR</h3>
-        <span className="text-[10px] font-mono text-muted-foreground">HOLDING COST: ${holdingCost}/D</span>
+        <div>
+          <h3 className="text-xs font-mono uppercase tracking-wider text-foreground font-bold">LIVE RECON PIPELINE</h3>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Track every unit from intake to frontline-ready.</p>
+        </div>
       </div>
 
-      <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
-        Adjust monthly volume and cycle time reduction to estimate capital recovery.
-      </p>
+      <div className="relative my-8 px-2">
+        {/* Horizontal track line */}
+        <div className="absolute top-[5px] left-0 right-0 h-[1px] bg-neutral-800" />
+        {/* Active track line */}
+        <div
+          className="absolute top-[5px] left-0 h-[1px] bg-foreground transition-all duration-700 ease-in-out"
+          style={{ width: `${progress}%` }}
+        />
 
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs font-mono uppercase">
-            <span className="text-muted-foreground">Monthly Lot Volume</span>
-            <span className="text-foreground font-bold">{volume} units</span>
+        <div className="relative flex justify-between">
+          {PHASES.map((phase, idx) => {
+            const isPassed = idx <= activeIndex;
+            const isActive = idx === activeIndex;
+            return (
+              <div key={phase} className="flex flex-col items-center z-10">
+                <div
+                  className={cn(
+                    "h-2.5 w-2.5 border transition-all duration-300 bg-background rounded-none",
+                    isActive ? "border-foreground scale-125" :
+                    isPassed ? "border-foreground bg-foreground" : "border-neutral-800"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-[8px] font-mono mt-3 uppercase tracking-tighter transition-colors duration-300",
+                    isActive ? "text-foreground font-bold" : "text-muted-foreground/45"
+                  )}
+                >
+                  {phase}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Animated car silhouette */}
+          <div
+            className="absolute -top-[7px] h-6 w-6 border border-foreground bg-background flex items-center justify-center transition-all duration-700 ease-in-out z-20 rounded-none"
+            style={{
+              left: `${progress}%`,
+              transform: "translateX(-50%)"
+            }}
+          >
+            <Car className="h-3 w-3 text-foreground animate-pulse" />
           </div>
-          <input
-            type="range"
-            min="5"
-            max="150"
-            step="5"
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            className="w-full h-1 bg-neutral-800 rounded-none appearance-none cursor-pointer accent-white"
-          />
         </div>
+      </div>
 
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs font-mono uppercase">
-            <span className="text-muted-foreground">Recon Days Reduced</span>
-            <span className="text-foreground font-bold">{daysSaved} days</span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="7"
-            step="1"
-            value={daysSaved}
-            onChange={(e) => setDaysSaved(Number(e.target.value))}
-            className="w-full h-1 bg-neutral-800 rounded-none appearance-none cursor-pointer accent-white"
-          />
+      {/* Operations Console log */}
+      <div className="border border-border p-4 bg-neutral-950 font-mono text-[10px] space-y-2 mt-6">
+        <div className="flex justify-between border-b border-border/40 pb-1.5 text-muted-foreground text-[8px] tracking-wider uppercase">
+          <span>ACTIVE UNIT</span>
+          <span>STATUS</span>
         </div>
-
-        <div className="border border-border p-5 text-center mt-6 bg-neutral-950">
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">Monthly Saved Holding Costs</span>
-          <p className="text-3xl font-bold font-mono text-foreground tracking-tight mt-2.5 tabular-nums">
-            ${monthlySavings.toLocaleString()}
-          </p>
-          <span className="text-[9px] font-mono text-muted-foreground/60 mt-1 block">
-            (${yearlySavings.toLocaleString()} ANNUALLY AT STATED RATE)
+        <div className="flex justify-between items-center text-foreground font-bold">
+          <span>{activeUnitInfo.vehicle}</span>
+          <span className="border border-foreground text-foreground px-1.5 py-0.5 text-[8px] uppercase tracking-wider">
+            {activeUnitInfo.status}
           </span>
         </div>
+        <p className="text-muted-foreground/75 text-[9px] leading-relaxed pt-1 select-none">
+          {activeUnitInfo.log}
+        </p>
       </div>
     </div>
   );
@@ -139,15 +202,15 @@ function Hero() {
             <span className="inline-flex items-center px-2.5 py-1 border border-border text-[9px] font-mono tracking-widest uppercase text-muted-foreground mb-6">
               RECON WORKFLOW REDEFINED
             </span>
-
+ 
             <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-foreground uppercase">
               Intake to frontline, slashed to hours.
             </h1>
-
+ 
             <p className="mt-6 text-sm text-muted-foreground leading-relaxed">
               Ditch the whiteboards and paper logs. Reconverse synchronizes your vehicle inspections, parts estimation sheets, and approval cycles into a clean, mobile-first operations hub.
             </p>
-
+ 
             <div className="mt-8 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
               <Button asChild size="lg" className="w-full sm:w-auto rounded-none border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground text-xs font-mono uppercase tracking-wider h-11 px-8">
                 <Link to="/login" id="hero-getstarted-btn">
@@ -158,7 +221,7 @@ function Hero() {
                 <Link to="/login" id="hero-signin-btn">Member Sign In</Link>
               </Button>
             </div>
-
+ 
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[9px] font-mono tracking-wider uppercase text-muted-foreground/60">
               <span>✓ Auto VIN Decoder</span>
               <span>·</span>
@@ -167,10 +230,10 @@ function Hero() {
               <span>✓ Real-time holding indicators</span>
             </div>
           </div>
-
-          {/* Right Hero Column (Interactive ROI Tool) */}
+ 
+          {/* Right Hero Column (Animated Recon Phase Tracker) */}
           <div className="flex justify-center lg:justify-end">
-            <ROICalculator />
+            <ReconPhaseTracker />
           </div>
         </div>
       </div>
