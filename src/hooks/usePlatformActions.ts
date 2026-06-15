@@ -1,10 +1,20 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 
+/** Payload to provision a new dealership + its initial admin user. */
+export interface CreateDealerPayload {
+  dealer_name: string;
+  admin_email: string;
+  admin_username: string;
+  admin_full_name?: string;
+  /** Initial password; MC auto-generates one if omitted. */
+  temp_password?: string;
+}
+
 export function useCreateDealer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { name: string }) => {
+    mutationFn: async (payload: CreateDealerPayload) => {
       const res = await apiFetch("/api/v1/reconverse/platform/dealers", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
