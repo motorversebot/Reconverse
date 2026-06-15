@@ -144,10 +144,10 @@ export default function DealerDashboard() {
   return (
     <div className="space-y-6">
       {/* Top command bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Command Center</h1>
-          <p className="text-xs font-semibold text-primary mt-1 uppercase tracking-wider">
+          <h1 className="text-xl font-bold tracking-tight uppercase">Command Center</h1>
+          <p className="text-[10px] font-mono text-muted-foreground mt-1 uppercase tracking-widest">
             {membership?.dealers?.name ?? "Dealer Room"}
           </p>
         </div>
@@ -155,14 +155,14 @@ export default function DealerDashboard() {
           <Button
             size="sm"
             variant="outline"
-            className="gap-2 h-9 text-xs font-bold border-border/40 text-muted-foreground hover:text-foreground bg-background/30"
+            className="gap-2 h-9 text-[10px] font-mono uppercase tracking-wider border-border bg-transparent text-muted-foreground hover:text-foreground rounded-none"
             onClick={() => navigate("/dealer/units")}
           >
             <Car className="h-3.5 w-3.5" /> All Units
           </Button>
           <Button
             size="sm"
-            className="gap-1.5 h-9 text-xs font-bold shadow-lg shadow-primary/10"
+            className="gap-1.5 h-9 text-[10px] font-mono uppercase tracking-wider bg-foreground text-background hover:bg-background hover:text-foreground border border-foreground rounded-none"
             onClick={() => navigate("/dealer/units")}
           >
             <Plus className="h-4 w-4" /> Add Unit
@@ -184,40 +184,35 @@ export default function DealerDashboard() {
           label="Active Units"
           value={kpis.activeUnits}
           sub="Lot Inventory"
-          icon={<Car className="h-4 w-4 text-primary" />}
-          waveColor="#8b5cf6"
+          icon={<Car className="h-4 w-4 text-foreground" />}
           onClick={() => navigate("/dealer/units")}
         />
         <KPICard
           label="Ready for Sale"
           value={kpis.readyCount}
           sub="Finished Cycle"
-          icon={<CheckCircle className="h-4 w-4 text-accent" />}
-          accent="text-accent"
-          waveColor="#06b6d4"
+          icon={<CheckCircle className="h-4 w-4 text-foreground" />}
+          accent="text-foreground"
           onClick={() => navigate(`/dealer/recon-lane/ready-for-sale`)}
         />
         <KPICard
           label="Avg Recon Cycle"
           value={kpis.avgReconDays > 0 ? `${kpis.avgReconDays}d` : "—"}
           sub="30d rolling avg"
-          icon={<Activity className="h-4 w-4 text-primary" />}
-          waveColor="#8b5cf6"
+          icon={<Activity className="h-4 w-4 text-foreground" />}
         />
         <KPICard
           label="Oldest Unit"
           value={kpis.oldestUnitDays > 0 ? `${Math.round(kpis.oldestUnitDays)}d` : "—"}
           sub="Maximum age"
-          icon={<Clock className="h-4 w-4 text-red-400" />}
-          waveColor="#f87171"
+          icon={<Clock className="h-4 w-4 text-foreground" />}
           accent={kpis.oldestUnitDays > 10 ? "text-red-400" : kpis.oldestUnitDays > 5 ? "text-amber-400" : undefined}
         />
         <KPICard
           label="Overdue Alerts"
           value={kpis.blockedCount}
           sub="Action needed"
-          icon={<AlertTriangle className="h-4 w-4 text-amber-400" />}
-          waveColor="#fbbf24"
+          icon={<AlertTriangle className="h-4 w-4 text-foreground" />}
           accent={kpis.blockedCount > 0 ? "text-amber-400" : undefined}
           onClick={kpis.blockedCount > 0 ? () => { setOverdueOnly(true); setStageFilter("all"); } : undefined}
         />
@@ -225,22 +220,20 @@ export default function DealerDashboard() {
           label="Recon Pipeline $"
           value={kpis.openReconDollars !== null ? `$${Math.round(kpis.openReconDollars).toLocaleString()}` : "—"}
           sub={kpis.estimatesMissingCount > 0 ? `${kpis.estimatesMissingCount} missing bills` : "Approved works"}
-          icon={<DollarSign className="h-4 w-4 text-accent" />}
-          waveColor="#06b6d4"
-          accent="text-accent"
+          icon={<DollarSign className="h-4 w-4 text-foreground" />}
         />
       </div>
 
       {/* ── 2. Interactive Pipeline Stages ── */}
-      <div className="glass-panel-strong p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-border/10 pb-3">
+      <div className="border border-border p-5 space-y-4 bg-card rounded-none">
+        <div className="flex items-center justify-between border-b border-border pb-3">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/50">
+            <p className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground">
               Pipeline Stages
             </p>
-            <h3 className="text-xs font-semibold text-foreground/80 mt-0.5">Distribution across lanes</h3>
+            <h3 className="text-xs font-mono uppercase text-foreground/80 mt-0.5">Distribution across lanes</h3>
           </div>
-          <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20 tabular-nums">
+          <span className="text-[10px] font-mono text-foreground border border-border bg-neutral-950 px-2.5 py-0.5 rounded-none tabular-nums">
             {kpis.activeUnits - kpis.readyCount} pending
           </span>
         </div>
@@ -265,28 +258,28 @@ export default function DealerDashboard() {
                 }}
                 disabled={stage === "sold"}
                 className={cn(
-                  "glass-panel p-4 text-left transition-all duration-300 relative group border-border/40 hover:scale-[1.01]",
-                  count > 0 ? "hover:border-primary/20 hover:bg-primary/5" : "opacity-45 cursor-default",
+                  "border p-4 text-left transition-colors duration-150 rounded-none relative group border-border",
+                  count > 0 ? "hover:border-foreground hover:bg-neutral-950" : "opacity-40 cursor-default",
                   stage === "sold" && "cursor-default"
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className={cn("h-2 w-2 rounded-full shrink-0 animate-pulse", STAGE_COLORS[stage])} />
-                  <span className="text-[10px] font-bold tracking-wider text-muted-foreground/70 uppercase truncate">
+                  <span className={cn("h-1.5 w-1.5 rounded-none shrink-0", STAGE_COLORS[stage])} />
+                  <span className="text-[9px] font-mono tracking-wider text-muted-foreground uppercase truncate">
                     {meta.label}
                   </span>
                 </div>
-                <p className={cn("text-2xl font-extrabold tracking-tight mt-2.5 tabular-nums", count > 0 ? "text-foreground" : "text-muted-foreground/35")}>
+                <p className={cn("text-2xl font-bold font-mono tracking-tight mt-2.5 tabular-nums", count > 0 ? "text-foreground" : "text-muted-foreground/35")}>
                   {count}
                 </p>
-                <div className="flex items-center justify-between mt-2 pt-1 border-t border-border/10">
+                <div className="flex items-center justify-between mt-2 pt-1 border-t border-border">
                   {avgDays && count > 0 ? (
-                    <span className="text-[9px] font-bold text-muted-foreground/45 tabular-nums">
-                      ~{avgDays}d avg
+                    <span className="text-[9px] font-mono text-muted-foreground/45 tabular-nums">
+                      {avgDays}d avg
                     </span>
                   ) : <span />}
                   {overdue > 0 && (
-                    <span className="text-[9px] font-extrabold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded tabular-nums">
+                    <span className="text-[9px] font-mono font-bold text-red-400 bg-red-950/20 border border-red-950 px-1 py-0.5 rounded-none tabular-nums">
                       {overdue} overdue
                     </span>
                   )}
@@ -300,19 +293,19 @@ export default function DealerDashboard() {
       {/* ── 3. Action Panel & Aging side by side ── */}
       <div className={cn("grid gap-5", isMobile ? "grid-cols-1" : "grid-cols-2")}>
         {/* Active Alerts */}
-        <div className="glass-panel p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-border/10 pb-3">
-            <AlertTriangle className="h-4 w-4 text-amber-500/80" />
+        <div className="border border-border p-5 space-y-4 bg-card rounded-none">
+          <div className="flex items-center gap-2 border-b border-border pb-3">
+            <AlertTriangle className="h-4 w-4 text-foreground/80" />
             <div>
-              <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/50">
+              <p className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground">
                 Action Alerts
               </p>
             </div>
           </div>
           {alerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground/40 gap-2">
-              <CheckCircle className="h-7 w-7 text-emerald-500/40" />
-              <p className="text-xs font-semibold">All lanes green. No blockers found.</p>
+            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground/45 gap-2">
+              <CheckCircle className="h-6 w-6 text-foreground/40" />
+              <p className="text-xs font-mono uppercase tracking-wider">All lanes green. No blockers found.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -322,11 +315,11 @@ export default function DealerDashboard() {
                   onClick={() => {
                     if (a.stage) { setStageFilter(a.stage); setOverdueOnly(true); }
                   }}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted/5 border border-border/40 hover:border-primary/20 hover:bg-primary/5 transition-all text-left"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-none bg-neutral-950 border border-border hover:border-foreground transition-colors text-left"
                 >
-                  <span className="text-xs font-semibold text-foreground/80">{a.label}</span>
+                  <span className="text-xs font-mono uppercase text-foreground/80">{a.label}</span>
                   <div className="flex items-center gap-2.5">
-                    <Badge className="bg-red-500/10 text-red-400 hover:bg-red-500/15 border-0 text-[10px] font-bold px-2.5">
+                    <Badge className="bg-red-950/20 text-red-400 hover:bg-red-950/30 border border-red-950 text-[9px] font-mono font-bold px-2 rounded-none">
                       {a.count} units
                     </Badge>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40" />
@@ -338,29 +331,29 @@ export default function DealerDashboard() {
         </div>
 
         {/* Aging Buckets list */}
-        <div className="glass-panel p-5 space-y-4">
-          <div className="border-b border-border/10 pb-3">
-            <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/50">
+        <div className="border border-border p-5 space-y-4 bg-card rounded-none">
+          <div className="border-b border-border pb-3">
+            <p className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground">
               Aging Analysis
             </p>
           </div>
           <div className="space-y-1">
             {/* Header row */}
-            <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-2 pb-1.5 border-b border-border/10">
-              <span className="text-[9px] font-bold text-muted-foreground/40 uppercase">Lane</span>
-              <span className="text-[9px] font-bold text-emerald-400 text-center uppercase tracking-wider">0–2d</span>
-              <span className="text-[9px] font-bold text-amber-400 text-center uppercase tracking-wider">3–5d</span>
-              <span className="text-[9px] font-bold text-red-400 text-center uppercase tracking-wider">6d+</span>
+            <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-2 pb-1.5 border-b border-border">
+              <span className="text-[9px] font-mono text-muted-foreground/40 uppercase">Lane</span>
+              <span className="text-[9px] font-mono text-foreground text-center uppercase tracking-wider">0–2d</span>
+              <span className="text-[9px] font-mono text-foreground text-center uppercase tracking-wider">3–5d</span>
+              <span className="text-[9px] font-mono text-foreground text-center uppercase tracking-wider">6d+</span>
             </div>
             
             {agingBuckets.filter(b => b.total > 0).map(b => {
               const meta = STAGE_META[b.stage as UnitStatus];
               return (
-                <div key={b.stage} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 items-center px-2 py-2.5 rounded-xl hover:bg-muted/10 transition-colors">
+                <div key={b.stage} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 items-center px-2 py-2.5 border-b border-border/10 hover:bg-neutral-950/40 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={cn("h-2 w-2 rounded-full shrink-0", STAGE_COLORS[b.stage])} />
-                    <span className="text-xs font-bold text-foreground/80 truncate">{meta?.label}</span>
-                    <span className="text-[10px] font-bold text-muted-foreground/35 bg-muted/40 px-1.5 py-0.5 rounded">{b.total}</span>
+                    <span className={cn("h-1.5 w-1.5 rounded-none shrink-0", STAGE_COLORS[b.stage])} />
+                    <span className="text-xs font-mono uppercase text-foreground/80 truncate">{meta?.label}</span>
+                    <span className="text-[9px] font-mono text-muted-foreground/50 bg-neutral-950 border border-border px-1.5 py-0.5 rounded-none">{b.total}</span>
                   </div>
                   <BucketCell count={b.green} color="emerald" onClick={() => setStageFilter(b.stage)} />
                   <BucketCell count={b.yellow} color="amber" onClick={() => setStageFilter(b.stage)} />
@@ -369,16 +362,16 @@ export default function DealerDashboard() {
               );
             })}
             {agingBuckets.every(b => b.total === 0) && (
-              <p className="text-xs text-muted-foreground/45 py-8 text-center">Empty lanes. Add cars to trigger logs.</p>
+              <p className="text-xs font-mono uppercase text-muted-foreground/45 py-8 text-center">Empty lanes. Add cars to trigger logs.</p>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── 4. Charting Modules (Gloss Fills) ── */}
+      {/* ── 4. Charting Modules (Stark Monochrome) ── */}
       <div className={cn("grid gap-5", isMobile ? "grid-cols-1" : "grid-cols-2")}>
-        <div className="glass-panel p-5 space-y-4">
-          <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/50">
+        <div className="border border-border p-5 space-y-4 bg-card rounded-none">
+          <p className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground">
             Intake vs Completes (14d)
           </p>
           <div className="h-[150px]">
@@ -386,50 +379,50 @@ export default function DealerDashboard() {
               <BarChart data={throughput} barGap={3}>
                 <defs>
                   <linearGradient id="addedBarGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                    <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.05} />
                   </linearGradient>
                   <linearGradient id="completedBarGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.2} />
+                    <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.2} />
                   </linearGradient>
                 </defs>
                 <XAxis
                   dataKey="date"
                   tick={false}
-                  axisLine={false}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
                   tickLine={false}
                 />
                 <YAxis hide />
                 <RechartsTooltip
                   contentStyle={{
                     background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border) / 0.8)",
-                    borderRadius: "12px",
-                    fontSize: "11px",
-                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)"
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "0px",
+                    fontSize: "10px",
+                    fontFamily: "JetBrains Mono"
                   }}
                   labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 />
-                <Bar dataKey="added" fill="url(#addedBarGrad)" radius={[3, 3, 0, 0]} name="Added" />
-                <Bar dataKey="completed" fill="url(#completedBarGrad)" radius={[3, 3, 0, 0]} name="Completed" />
+                <Bar dataKey="added" fill="url(#addedBarGrad)" stroke="hsl(var(--border))" name="Added" />
+                <Bar dataKey="completed" fill="url(#completedBarGrad)" stroke="hsl(var(--foreground))" name="Completed" />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex items-center gap-4 px-1 pt-1 border-t border-border/10">
+          <div className="flex items-center gap-4 px-1 pt-2 border-t border-border">
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded bg-primary" />
-              <span className="text-[10px] font-semibold text-muted-foreground/60">Vehicles Added</span>
+              <span className="h-1.5 w-1.5 rounded-none bg-neutral-600" />
+              <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">Vehicles Added</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded bg-accent" />
-              <span className="text-[10px] font-semibold text-muted-foreground/60">Vehicles Completed</span>
+              <span className="h-1.5 w-1.5 rounded-none bg-foreground" />
+              <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">Vehicles Completed</span>
             </div>
           </div>
         </div>
 
-        <div className="glass-panel p-5 space-y-4">
-          <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/50">
+        <div className="border border-border p-5 space-y-4 bg-card rounded-none">
+          <p className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground">
             Completes Trend Volume
           </p>
           <div className="h-[150px]">
@@ -437,48 +430,48 @@ export default function DealerDashboard() {
               <AreaChart data={throughput}>
                 <defs>
                   <linearGradient id="trendAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity={0} />
+                    <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="date" tick={false} axisLine={false} tickLine={false} />
+                <XAxis dataKey="date" tick={false} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={false} />
                 <YAxis hide />
                 <RechartsTooltip
                   contentStyle={{
                     background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border) / 0.8)",
-                    borderRadius: "12px",
-                    fontSize: "11px",
-                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)"
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "0px",
+                    fontSize: "10px",
+                    fontFamily: "JetBrains Mono"
                   }}
                   labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 />
                 <Area
                   type="monotone"
                   dataKey="completed"
-                  stroke="#06b6d4"
-                  strokeWidth={2.5}
+                  stroke="hsl(var(--foreground))"
+                  strokeWidth={1.5}
                   fill="url(#trendAreaGrad)"
                   name="Completed"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex items-center gap-1 px-1 pt-1 border-t border-border/10">
-            <span className="text-[10px] font-semibold text-muted-foreground/50">14-day completion trend mapping</span>
+          <div className="flex items-center gap-1 px-1 pt-2 border-t border-border">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/50">14-day completion trend mapping</span>
           </div>
         </div>
       </div>
 
       {/* ── 5. Priority Units Table Redesign ── */}
-      <div className="glass-panel p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-border/10 pb-3">
+      <div className="border border-border p-5 space-y-4 bg-card rounded-none">
+        <div className="flex items-center justify-between border-b border-border pb-3">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/50">
+            <p className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground">
               Priority Inventory lane
             </p>
           </div>
-          <span className="text-xs font-bold text-muted-foreground/50 tabular-nums bg-muted/20 px-2 py-0.5 rounded">
+          <span className="text-[10px] font-mono text-muted-foreground/60 border border-border px-2 py-0.5 rounded-none">
             {filteredUnits.length} matches
           </span>
         </div>
@@ -486,19 +479,19 @@ export default function DealerDashboard() {
         {/* Filters and Searches */}
         <div className={cn("flex gap-3 flex-wrap items-center", isMobile && "flex-col items-stretch")}>
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/45" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/45" />
             <Input
               placeholder="Search VIN, stock number, make model..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-xs bg-muted/5 border-border/40 focus-visible:ring-primary focus-visible:border-primary rounded-xl"
+              className="pl-9 h-9 text-xs font-mono bg-neutral-950 border-border rounded-none focus-visible:ring-foreground focus-visible:border-foreground"
             />
           </div>
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-[150px] h-9 text-xs bg-muted/5 border-border/40 rounded-xl">
+            <SelectTrigger className="w-[150px] h-9 text-[10px] font-mono uppercase tracking-wider bg-neutral-950 border-border rounded-none">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-popover border border-border/80 text-xs">
+            <SelectContent className="bg-popover border border-border text-[10px] font-mono uppercase tracking-wider rounded-none">
               <SelectItem value="all">All Stages</SelectItem>
               {PIPELINE_STAGES.map(s => (
                 <SelectItem key={s} value={s}>{STAGE_META[s].label}</SelectItem>
@@ -506,29 +499,29 @@ export default function DealerDashboard() {
               <SelectItem value="ready">Ready</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-2 bg-muted/5 px-3 py-1.5 rounded-xl border border-border/40 h-9 shrink-0">
+          <div className="flex items-center gap-2 bg-neutral-950 px-3 py-1.5 border border-border h-9 shrink-0 rounded-none">
             <Switch
               checked={overdueOnly}
               onCheckedChange={setOverdueOnly}
               className="scale-[0.8]"
             />
-            <span className="text-xs font-semibold text-muted-foreground/60 select-none">Overdue only</span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 select-none">Overdue only</span>
           </div>
         </div>
 
         {/* Responsive Table */}
-        <div className="overflow-x-auto rounded-xl border border-border/20">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto border border-border rounded-none">
+          <table className="w-full text-xs text-left">
             <thead>
-              <tr className="border-b border-border/30 bg-muted/5 select-none">
-                <th className="text-left font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">Vehicle Details</th>
-                <th className="text-left font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">VIN Identifier</th>
-                <th className="text-left font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">Stock Num</th>
-                <th className="text-left font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">Active Stage</th>
-                <th className="text-right font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">Time in Stage</th>
-                <th className="text-right font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">Total Recon</th>
-                <th className="text-left font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">Promise Date</th>
-                <th className="text-center font-bold uppercase tracking-wider text-muted-foreground/50 py-3 px-3">Blockers</th>
+              <tr className="border-b border-border bg-neutral-950/50 select-none font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
+                <th className="py-3 px-4">Vehicle Details</th>
+                <th className="py-3 px-4">VIN Identifier</th>
+                <th className="py-3 px-4">Stock Num</th>
+                <th className="py-3 px-4">Active Stage</th>
+                <th className="py-3 px-4 text-right">Time in Stage</th>
+                <th className="py-3 px-4 text-right">Total Recon</th>
+                <th className="py-3 px-4">Promise Date</th>
+                <th className="py-3 px-4 text-center">Blockers</th>
               </tr>
             </thead>
             <tbody>
@@ -538,73 +531,69 @@ export default function DealerDashboard() {
                   <tr
                     key={u.id}
                     onClick={() => navigate(`/dealer/units/${u.id}`)}
-                    className="border-b border-border/10 hover:bg-muted/10 cursor-pointer transition-colors"
+                    className="border-b border-border/10 hover:bg-neutral-900/50 cursor-pointer transition-colors"
                   >
-                    <td className="py-3 px-3">
-                      <div className="font-bold text-foreground/90">
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-foreground">
                         {u.year} {u.make} {u.model}
                       </div>
                       {u.trim && (
                         <div className="text-[10px] text-muted-foreground/50 font-semibold">{u.trim}</div>
                       )}
                     </td>
-                    <td className="py-3 px-3 font-mono text-muted-foreground/60">
-                      {u.vin ? `...${u.vin.slice(-6).toUpperCase()}` : "—"}
+                    <td className="py-3 px-4 font-mono text-muted-foreground/60">
+                      {u.vin ? `${u.vin.slice(-6).toUpperCase()}` : "—"}
                     </td>
-                    <td className="py-3 px-3 text-muted-foreground/70 font-semibold">
+                    <td className="py-3 px-4 text-muted-foreground/75 font-mono">
                       {u.stock_number ?? "—"}
                     </td>
-                    <td className="py-3 px-3">
-                      <span className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
-                        STAGE_BG[u.status], STAGE_TEXT[u.status], "border-transparent"
-                      )}>
-                        <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", STAGE_COLORS[u.status])} />
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-border text-[9px] font-mono uppercase bg-neutral-950 text-foreground">
+                        <span className={cn("h-1 w-1 rounded-none shrink-0", STAGE_COLORS[u.status])} />
                         {meta.label}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right">
+                    <td className="py-3 px-4 text-right font-mono tabular-nums">
                       <span className={cn(
-                        "font-bold tabular-nums",
+                        "font-bold",
                         u.daysInStage >= 6 ? "text-red-400" :
-                        u.daysInStage >= 3 ? "text-amber-400" : "text-emerald-400"
+                        u.daysInStage >= 3 ? "text-amber-400" : "text-foreground"
                       )}>
                         {formatAgingDuration(u.hoursInStage)}
                       </span>
                     </td>
-                    {/* Fixed Total Days cell alignment and insertion */}
-                    <td className="py-3 px-3 text-right font-bold text-muted-foreground/60 tabular-nums">
+                    <td className="py-3 px-4 text-right font-mono font-bold text-muted-foreground/60 tabular-nums">
                       {Math.round(u.totalDays)}d
                     </td>
-                    <td className="py-3 px-3">
+                    <td className="py-3 px-4 font-mono">
                       {u.promise_date ? (
                         <span className={cn(
-                          "tabular-nums font-semibold",
+                          "tabular-nums",
                           u.isPromiseOverdue ? "text-red-400" : "text-muted-foreground/50"
                         )}>
-                          {new Date(u.promise_date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          {new Date(u.promise_date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase()}
                         </span>
                       ) : (
                         <span className="text-muted-foreground/20">—</span>
                       )}
                     </td>
-                    <td className="py-3 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1 flex-wrap font-mono text-[8px]">
                         {u.blockers.map(b => (
                           <span
                             key={b}
                             className={cn(
-                              "inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border",
-                              b === "Promise" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                              b === "Approval" ? "bg-orange-400/10 text-orange-400 border-orange-500/20" :
-                              "bg-teal-400/10 text-teal-400 border-teal-500/20"
+                              "inline-block px-1.5 py-0.5 border uppercase",
+                              b === "Promise" ? "bg-red-950/20 text-red-400 border-red-950" :
+                              b === "Approval" ? "bg-orange-950/20 text-orange-400 border-orange-950" :
+                              "bg-neutral-950 text-foreground border-border"
                             )}
                           >
                             {b}
                           </span>
                         ))}
                         {u.isOverdue && !u.blockers.includes("Promise") && (
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <span className="inline-block px-1.5 py-0.5 border bg-amber-950/20 text-amber-400 border-amber-950 uppercase">
                             Late
                           </span>
                         )}
@@ -615,8 +604,8 @@ export default function DealerDashboard() {
               })}
               {filteredUnits.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-xs text-muted-foreground/40 font-semibold">
-                    No matching units found inside filters.
+                  <td colSpan={8} className="py-12 text-center text-xs font-mono uppercase text-muted-foreground/40">
+                    No matching units found.
                   </td>
                 </tr>
               )}
@@ -626,7 +615,7 @@ export default function DealerDashboard() {
         {filteredUnits.length > 20 && (
           <button
             onClick={() => navigate("/dealer/units")}
-            className="w-full text-center text-xs font-bold text-primary hover:underline py-1"
+            className="w-full text-center text-[10px] font-mono uppercase text-muted-foreground/80 hover:text-foreground py-1"
           >
             Show all {filteredUnits.length} lot units →
           </button>
@@ -638,7 +627,7 @@ export default function DealerDashboard() {
 
 // ── KPICard Sub-component ──
 function KPICard({
-  label, value, sub, icon, accent, waveColor = "#10b981", onClick,
+  label, value, sub, icon, accent, waveColor, onClick,
 }: {
   label: string;
   value: string | number;
@@ -653,25 +642,19 @@ function KPICard({
       onClick={onClick}
       disabled={!onClick}
       className={cn(
-        "glass-panel p-4 text-left transition-all duration-300 relative overflow-hidden group hover:scale-[1.02]",
-        onClick ? "hover:border-primary/20 cursor-pointer" : "cursor-default"
+        "border border-border p-5 text-left transition-colors duration-150 bg-card rounded-none relative group",
+        onClick ? "hover:border-foreground cursor-pointer" : "cursor-default"
       )}
     >
-      {/* Visual background wave sparkline */}
-      <svg className="absolute bottom-0 inset-x-0 h-10 w-full opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity" preserveAspectRatio="none" viewBox="0 0 100 20">
-        <path d="M0,20 Q15,5 30,12 T60,5 T90,15 L100,20 Z" fill={waveColor} />
-        <path d="M0,20 Q15,5 30,12 T60,5 T90,15" fill="none" stroke={waveColor} strokeWidth="0.5" />
-      </svg>
-
-      <div className="flex items-center justify-between gap-2 z-10 relative">
-        <span className="text-[9px] font-bold tracking-wider uppercase text-muted-foreground/55 truncate">{label}</span>
-        <span className="text-muted-foreground/45 bg-muted/20 p-1 rounded-lg shrink-0">{icon}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[9px] font-mono tracking-widest uppercase text-muted-foreground truncate">{label}</span>
+        <span className="text-muted-foreground shrink-0">{icon}</span>
       </div>
-      <p className={cn("text-2xl font-extrabold tracking-tight mt-2.5 tabular-nums z-10 relative", accent ?? "text-foreground")}>
+      <p className={cn("text-2xl font-bold font-mono tracking-tight mt-3 tabular-nums text-foreground", accent)}>
         {value}
       </p>
       {sub && (
-        <p className="text-[10px] font-bold text-muted-foreground/40 mt-1 z-10 relative">{sub}</p>
+        <p className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/60 mt-1.5">{sub}</p>
       )}
     </button>
   );
@@ -679,16 +662,16 @@ function KPICard({
 
 // ── BucketCell Sub-component ──
 function BucketCell({ count, color, onClick }: { count: number; color: string; onClick?: () => void }) {
-  if (count === 0) return <span className="text-center text-[11px] text-muted-foreground/20 tabular-nums select-none">—</span>;
+  if (count === 0) return <span className="text-center text-[11px] text-muted-foreground/20 font-mono select-none">—</span>;
   const colorMap: Record<string, string> = {
-    emerald: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-    amber: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-    red: "bg-red-500/10 text-red-400 border border-red-500/20",
+    emerald: "border border-border text-foreground hover:border-foreground bg-neutral-950",
+    amber: "border border-neutral-700 text-neutral-300 hover:border-foreground bg-neutral-950",
+    red: "border border-red-950 text-red-400 hover:border-red-500 bg-neutral-950/40",
   };
   return (
     <button
       onClick={onClick}
-      className={cn("text-center rounded-lg py-1 text-[10px] font-bold tabular-nums transition-colors", colorMap[color], "hover:opacity-85")}
+      className={cn("text-center rounded-none py-1 text-[10px] font-mono font-bold tabular-nums transition-colors", colorMap[color])}
     >
       {count}
     </button>
