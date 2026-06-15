@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const MC_API = process.env.MC_API_INTERNAL || 'https://gateway.tdreman.app/mc';
+// Public URL of the Motorverse Mission Control gateway.
+// Set this in Vercel: Settings -> Environment Variables -> Production -> MC_API_INTERNAL
+// MC is currently LAN-only (motorverse.genesis.lan); the deployment will return a
+// clean 503 below until a public MC transport exists and this var is set.
+const MC_API = process.env.MC_API_INTERNAL;
 
 const HOP_BY_HOP = new Set([
   'connection', 'content-length', 'host', 'keep-alive',
@@ -9,6 +13,18 @@ const HOP_BY_HOP = new Set([
 ]);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Hard-fail with a JSON-shaped error when the transport isn't configured.
+  // The client (lib/api.ts) expects { ok: false, error: string } shapes — this
+  // surfaces as a clean 'MC gateway not configured' error instead of HTML 404.
+  if (!MC_API) {
+    res.status(503).json({
+      ok: false,
+      error: 'mc_unreachable',
+      detail: 'MC_API_INTERNAL is not set on this Vercel deployment. Set it to the public MC URL and redeploy.',
+    });
+    return;
+  }
+
   let pathStr = '';
   let qs = '';
   if (req.query.path !== undefined) {

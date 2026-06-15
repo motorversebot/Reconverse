@@ -43,13 +43,19 @@ npm run preview        # preview production build
 
 ## Environment
 
-Real keys live in `.env` (gitignored). The template is `.env.example`. Only the Supabase anon/publishable key belongs in the frontend env — service-role keys must never be committed and must only live in Edge Function secrets.
+Reconverse has **no client-side environment variables**. The frontend always
+talks to same-origin `/api/v1/*` paths. A Vercel serverless function at
+`api/proxy.ts` reverse-proxies those to Motorverse Mission Control.
 
-| Variable | Purpose |
-|---|---|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_PROJECT_ID` | Project ref |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon publishable key |
+Configure transport on Vercel:
+
+| Var (Production)   | Where           | Purpose                                  |
+|--------------------|-----------------|------------------------------------------|
+| `MC_API_INTERNAL`  | Vercel project  | Public URL of MC (e.g. https://mc.example) |
+
+The `supabase/` directory in this repo is legacy — Reconverse no longer uses
+Supabase auth, storage, or edge functions. All identity + data flows through
+MC's `/api/v1/auth/*` and `/api/v1/reconverse/*` endpoints.
 
 ## Supabase
 
