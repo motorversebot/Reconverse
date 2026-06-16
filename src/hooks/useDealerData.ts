@@ -292,6 +292,50 @@ export function saveLocalMockUnits(dealerId: string, units: any[]): void {
   localStorage.setItem(MOCK_UNITS_KEY(dealerId), JSON.stringify(units));
 }
 
+// ── Real units (token-scoped → dealer-isolated by MC) ───────────────────────
+// MC's /reconverse/units returns the signed-in user's dealer rows only, with
+// status ∈ active|hold|sold|archived and a joined stage_slug. The frontend
+// models status AS the stage (inspection|estimate|…), so we map it here.
+const MC_STAGE_TO_STATUS: Record<string, string> = {
+  intake: "inspection", mpi: "inspection", estimate: "estimate",
+  approval: "approval", repair: "repair", qc: "qc", ready: "ready", sold: "sold",
+};
+
+function mapMcUnit(u: Record<string, unknown>) {
+  const mcStatus = String(u.status ?? "active");
+  const archived = mcStatus === "archived";
+  const status = mcStatus === "sold"
+    ? "sold"
+    : (MC_STAGE_TO_STATUS[String(u.stage_slug ?? "")] ?? "inspection");
+  return {
+    id: String(u.id),
+    year: (u.year as number) ?? null,
+    make: (u.make as string) ?? null,
+    model: (u.model as string) ?? null,
+    trim: (u.trim as string) ?? null,
+    color: (u.exterior_color as string) ?? (u.color as string) ?? null,
+    vin: (u.vin as string) ?? null,
+    stock_number: (u.stock_number as string) ?? null,
+    status,
+    current_stage_id: (u.current_stage_id as number) ?? null,
+    stage_entered_at: (u.stage_entered_at as string) ?? (u.created_at as string),
+    created_at: u.created_at as string,
+    updated_at: (u.updated_at as string) ?? (u.created_at as string),
+    dealer_id: String(u.dealer_id),
+    promise_date: (u.promise_date as string) ?? null,
+    notes: (u.notes as string) ?? null,
+    is_deleted: archived,
+  };
+}
+
+/** Fetch this dealer's real units. Server scopes to the caller's dealer. */
+export async function fetchDealerUnits(): Promise<ReturnType<typeof mapMcUnit>[]> {
+  const res = await apiFetch(`/api/v1/reconverse/units?status=all&limit=200`);
+  const j = await res.json().catch(() => null);
+  if (!res.ok || !j?.ok || !Array.isArray(j.data)) return [];
+  return (j.data as Record<string, unknown>[]).map(mapMcUnit);
+}
+
 export function useDealerDashboardStats(dealerId?: string) {
   return useQuery({
     queryKey: ["dealer-dashboard-stats", dealerId],
@@ -317,14 +361,11 @@ export function useDealerRecentUnits(dealerId?: string) {
   return useQuery({
     queryKey: ["dealer-recent-units", dealerId],
     queryFn: async () => {
-      try {
-        const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/units?recent=true&limit=10`);
-        const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.units as any[];
-      } catch (e) {
-        console.warn("recent units API failed, returning mock", e);
-      }
-      return getLocalMockUnits(dealerId || "1").slice(0, 10);
+      const all = await fetchDealerUnits();
+      return all
+        .filter((u) => !u.is_deleted)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+        .slice(0, 10);
     },
     enabled: !!dealerId,
   });
@@ -335,14 +376,8 @@ export function useDealerUnits(dealerId?: string) {
     queryKey: ["dealer-units", dealerId],
     queryFn: async () => {
       if (!dealerId) return [];
-      try {
-        const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/units`);
-        const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.units as any[];
-      } catch (err) {
-        console.warn("apiFetch failed for dealer units, using mock fallback", err);
-      }
-      return getLocalMockUnits(dealerId).filter(u => !u.is_deleted);
+      const all = await fetchDealerUnits();
+      return all.filter((u) => !u.is_deleted);
     },
     enabled: !!dealerId,
   });
@@ -353,14 +388,8 @@ export function useDealerArchivedUnits(dealerId?: string) {
     queryKey: ["dealer-archived-units", dealerId],
     queryFn: async () => {
       if (!dealerId) return [];
-      try {
-        const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/units?archived=true`);
-        const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.units as any[];
-      } catch (err) {
-        console.warn("apiFetch failed for archived units, using mock fallback", err);
-      }
-      return getLocalMockUnits(dealerId).filter(u => u.is_deleted);
+      const all = await fetchDealerUnits();
+      return all.filter((u) => u.is_deleted);
     },
     enabled: !!dealerId,
   });

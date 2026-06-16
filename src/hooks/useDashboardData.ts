@@ -65,7 +65,7 @@ export interface EnrichedUnit extends DashboardUnit {
   blockers: string[];
 }
 
-import { getLocalMockUnits } from "./useDealerData";
+import { fetchDealerUnits } from "./useDealerData";
 
 function computeLocalDashboardData(dealerId: string, units: any[]) {
   const activeUnitsList = units.filter(u => !u.is_deleted && u.status !== "sold");
@@ -210,16 +210,7 @@ export function useDashboardData(dealerId?: string) {
     queryKey: ["dashboard-command-center", dealerId],
     queryFn: async () => {
       if (!dealerId) return null;
-      try {
-        const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/dashboard`);
-        const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) {
-          return j.data;
-        }
-      } catch (err) {
-        console.warn("apiFetch failed for dashboard, computing client side", err);
-      }
-      const units = getLocalMockUnits(dealerId);
+      const units = await fetchDealerUnits();
       return computeLocalDashboardData(dealerId, units);
     },
     enabled: !!dealerId,
