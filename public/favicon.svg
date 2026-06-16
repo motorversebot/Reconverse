@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#000000"/>
+  <!-- Left Vertical Stem -->
+  <rect x="156" y="120" width="50" height="272" fill="#ffffff"/>
+  <!-- Top Horizontal Bar -->
+  <rect x="206" y="120" width="130" height="50" fill="#ffffff"/>
+  <!-- Right Loop Stem -->
+  <rect x="286" y="170" width="50" height="100" fill="#ffffff"/>
+  <!-- Middle Horizontal Bar -->
+  <rect x="206" y="220" width="130" height="50" fill="#ffffff"/>
+  <!-- Diagonal Leg -->
+  <polygon points="236,270 286,270 356,392 306,392" fill="#ffffff"/>
+</svg>
