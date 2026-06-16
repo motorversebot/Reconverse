@@ -23,6 +23,12 @@ export default function DealerUsersPage() {
   const updateUser = useUpdateDealerUser();
   const { toast } = useToast();
 
+  const fmtDate = (v: unknown) => {
+    if (!v) return "—";
+    const d = new Date(v as string);
+    return isNaN(d.getTime()) ? "—" : format(d, "MMM d, yyyy");
+  };
+
   const handleRoleChange = async (userId: string, role: string) => {
     try {
       await updateUser.mutateAsync({ userId, role });
@@ -131,7 +137,7 @@ export default function DealerUsersPage() {
                       {m.is_active ? "Active" : "Inactive"}
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{format(new Date(m.created_at), "MMM d, yyyy")}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmtDate(m.created_at)}</TableCell>
                   {isUserAdmin && (
                     <TableCell>
                       <div className="flex gap-1">
