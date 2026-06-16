@@ -163,7 +163,7 @@ export default function DealerDashboard() {
           <Button
             size="sm"
             className="gap-1.5 h-9 text-[10px] font-mono uppercase tracking-wider bg-foreground text-background hover:bg-background hover:text-foreground border border-foreground rounded-none"
-            onClick={() => navigate("/dealer/units")}
+            onClick={() => navigate("/dealer/units?add=1")}
           >
             <Plus className="h-4 w-4" /> Add Unit
           </Button>

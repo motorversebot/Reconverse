@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { mapVinDecodeToIntake, mergeDecodeIntoIntake } from "@/lib/vinToIntakeMapping";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import { apiFetch } from "@/lib/api";
-import { isStaffOnly } from "@/lib/permissions";
+import { isStaffOnly, canEditUnits, canArchiveUnits } from "@/lib/permissions";
 import StaffUnitDrawer from "@/components/dealer/StaffUnitDrawer";
 
 import { ALL_STATUSES, STAGE_META } from "@/lib/pipeline";
@@ -58,6 +58,7 @@ const emptyForm: UnitForm = {
 
 export default function DealerUnitsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: membership } = useCurrentDealer();
   const dealerId = membership?.dealer_id ?? "";
   const role = membership?.role as string | undefined;
@@ -68,7 +69,8 @@ export default function DealerUnitsPage() {
   const updateUnit = useUpdateUnit();
   const restoreUnit = useRestoreUnit();
   const { toast } = useToast();
-  const isAdmin = membership?.role === "dealer_admin";
+  const canEdit = canEditUnits(role);       // owner / admin / manager → add + edit units
+  const canManage = canArchiveUnits(role);  // owner / admin → archive + restore
   const [drawerUnit, setDrawerUnit] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("active");
   const [search, setSearch] = useState("");
@@ -164,6 +166,17 @@ export default function DealerUnitsPage() {
     resetDecodeState();
     setModalOpen(true);
   };
+
+  // Deep-link: arriving with ?add=1 (e.g. dashboard "Add Unit") opens intake.
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      if (!staffOnly && canEdit) openCreate();
+      const next = new URLSearchParams(searchParams);
+      next.delete("add");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const openEdit = (u: any) => {
     setEditingId(u.id);
@@ -338,7 +351,7 @@ export default function DealerUnitsPage() {
           <h1 className="text-xl font-bold text-foreground">Units</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manage your inventory</p>
         </div>
-        {!staffOnly && isAdmin && (
+        {!staffOnly && canEdit && (
           <Button variant="hero" size="sm" onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" /> Add Unit
           </Button>
@@ -364,7 +377,7 @@ export default function DealerUnitsPage() {
             Active
             {units?.length ? <span className="text-xs font-mono text-muted-foreground ml-1">({units.length})</span> : null}
           </TabsTrigger>
-          {!staffOnly && isAdmin && (
+          {!staffOnly && canManage && (
             <TabsTrigger value="archived" className="gap-2">
               <Archive className="h-3.5 w-3.5" />
               Archived
@@ -439,7 +452,7 @@ export default function DealerUnitsPage() {
           </Card>
         </TabsContent>
 
-        {!staffOnly && isAdmin && (
+        {!staffOnly && canManage && (
           <TabsContent value="archived">
             <Card className="glass-panel border-border">
               <CardContent className="p-0">

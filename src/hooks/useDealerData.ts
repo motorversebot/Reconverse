@@ -17,6 +17,32 @@ import { apiFetch, getMe } from "@/lib/api";
  * TODO(MC): replace this with a real /api/v1/reconverse/me/membership call
  * once MC implements the endpoint.
  */
+/**
+ * Normalize whatever role MC returns into the frontend DealerRole vocabulary
+ * (dealer_owner | dealer_admin | manager | staff) used by lib/permissions.
+ *
+ * MC's /auth/me returns a *global* auth role (admin | counterman | driver | …),
+ * not the tenant-scoped reconverse role (owner | manager | tech | …), and the
+ * two vocabularies don't line up. Mapping them here means the recon-lane nav,
+ * Add Unit, Users and Settings gates work instead of silently hiding.
+ *
+ * Until MC exposes a granular per-dealer role, unknown/auth roles default to
+ * owner-level access (one login per dealer today) so dealers aren't locked out.
+ * TODO(MC): use the real reconverse role from /reconverse/me/membership.
+ */
+function normalizeDealerRole(raw?: string | null): string {
+  switch ((raw || "").toLowerCase()) {
+    case "dealer_admin": return "dealer_admin";
+    case "manager": return "manager";
+    case "staff":
+    case "viewer": return "staff";
+    case "owner":
+    case "dealer_owner":
+    case "admin":
+    default: return "dealer_owner";
+  }
+}
+
 export function useCurrentDealer() {
   return useQuery({
     queryKey: ["current-dealer"],
@@ -29,7 +55,7 @@ export function useCurrentDealer() {
       return {
         dealer_id: user.dealer_id ?? "1",
         dealer_name: "",
-        role: user.role ?? "dealer_owner",
+        role: normalizeDealerRole(user.role),
         is_active: true,
       } as { dealer_id: string; dealer_name: string; role: string; is_active: boolean };
     },
