@@ -41,7 +41,7 @@ export default function DealerUsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
-  const [newRole, setNewRole] = useState<DealerRole>("staff");
+  const [newRole, setNewRole] = useState<DealerRole>("technician");
   const [newPassword, setNewPassword] = useState("");
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function DealerUsersPage() {
       });
       toast({ title: "User created", description: `${newEmail} added as ${roleLabel(newRole)}` });
       setCreateOpen(false);
-      setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("staff");
+      setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("technician");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
