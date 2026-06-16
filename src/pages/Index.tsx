@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import {
@@ -33,7 +33,7 @@ const STAGES = [
 /* ── Top navigation ── */
 function Nav() {
   return (
-    <nav className="sticky top-0 z-40 bg-background border-b border-border">
+    <nav className="sticky top-0 z-40 bg-background/85 backdrop-blur-md border-b border-border">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="h-7 w-7 rounded-none border border-foreground bg-foreground text-background flex items-center justify-center font-mono font-bold text-sm">
@@ -115,7 +115,7 @@ function ReconPhaseTracker() {
   const progress = (activeIndex / (PHASES.length - 1)) * 100;
 
   return (
-    <div className="border border-border p-6 sm:p-8 max-w-md w-full bg-card relative">
+    <div className="border border-border p-6 sm:p-8 max-w-md w-full bg-card relative z-10">
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
         <div>
           <h3 className="text-xs font-mono uppercase tracking-wider text-foreground font-bold">LIVE RECON PIPELINE</h3>
@@ -193,7 +193,7 @@ function ReconPhaseTracker() {
 /* ── Hero ── */
 function Hero() {
   return (
-    <section className="relative border-b border-border bg-background py-16 sm:py-24">
+    <section className="relative border-b border-border bg-transparent py-16 sm:py-24">
       <div className="max-w-6xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-12 items-center">
           
@@ -258,7 +258,7 @@ function PipelineSection() {
   };
 
   return (
-    <section className="relative bg-background py-16 sm:py-24 border-b border-border">
+    <section className="relative bg-transparent py-16 sm:py-24 border-b border-border">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-12">
           <span className="text-[9px] font-mono tracking-widest uppercase text-muted-foreground border border-border px-2.5 py-1">
@@ -336,7 +336,7 @@ const FEATURES = [
   {
     icon: ThumbsUp,
     title: "INSTANT SIGN-OFFS",
-    body: "Managers accept or deny estimate lines with a single mobile trigger, sending work orders instantly to technicians.",
+    body: "Managers accept or decline estimate lines with a single mobile trigger, sending work orders instantly to technicians.",
   },
   {
     icon: Camera,
@@ -357,7 +357,7 @@ const FEATURES = [
 
 function Features() {
   return (
-    <section className="relative py-16 sm:py-24 border-b border-border bg-background">
+    <section className="relative py-16 sm:py-24 border-b border-border bg-transparent">
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <span className="text-[9px] font-mono tracking-widest uppercase text-muted-foreground border border-border px-2.5 py-1">
@@ -369,14 +369,18 @@ function Features() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((f) => {
+          {FEATURES.map((f, idx) => {
             const Icon = f.icon;
             return (
               <div
                 key={f.title}
-                className="border border-border p-6 rounded-none bg-card hover:border-foreground transition-colors duration-200"
+                className="border border-border p-6 rounded-none bg-card hover:border-foreground transition-all duration-300 relative group overflow-hidden"
               >
-                <div className="h-10 w-10 border border-border flex items-center justify-center mb-5 bg-neutral-950">
+                {/* Index indicator */}
+                <span className="absolute top-4 right-4 text-[9px] font-mono text-muted-foreground/35 group-hover:text-foreground/80 transition-colors duration-300">
+                  [{String(idx + 1).padStart(2, "0")}]
+                </span>
+                <div className="h-10 w-10 border border-border flex items-center justify-center mb-5 bg-neutral-950 transition-colors duration-300 group-hover:border-foreground">
                   <Icon className="h-5 w-5 text-foreground" />
                 </div>
                 <h3 className="text-xs font-mono uppercase tracking-wider text-foreground font-bold mb-2.5">
@@ -402,7 +406,7 @@ function ValueStrip() {
     { label: "DETAILED AUDIT LOGS", body: "Vehicle updates are chronologically recorded in unified server logs." },
   ];
   return (
-    <section className="relative py-12 border-b border-border bg-background">
+    <section className="relative py-12 border-b border-border bg-transparent">
       <div className="max-w-6xl mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {items.map((it) => {
@@ -422,10 +426,16 @@ function ValueStrip() {
 /* ── Final Call To Action ── */
 function FinalCTA() {
   return (
-    <section className="relative py-16 sm:py-20 bg-background">
+    <section className="relative py-16 sm:py-20 bg-transparent">
       <div className="max-w-4xl mx-auto px-6">
-        <div className="border border-border p-10 sm:p-14 text-center bg-card relative">
-          <div className="relative">
+        <div className="border border-border p-10 sm:p-14 text-center bg-card relative overflow-hidden group">
+          {/* Corner tick marks */}
+          <div className="absolute top-3 left-3 text-[10px] font-mono text-muted-foreground/30 select-none pointer-events-none">+</div>
+          <div className="absolute top-3 right-3 text-[10px] font-mono text-muted-foreground/30 select-none pointer-events-none">+</div>
+          <div className="absolute bottom-3 left-3 text-[10px] font-mono text-muted-foreground/30 select-none pointer-events-none">+</div>
+          <div className="absolute bottom-3 right-3 text-[10px] font-mono text-muted-foreground/30 select-none pointer-events-none">+</div>
+
+          <div className="relative z-10">
             <h2 className="text-3xl font-bold tracking-tight text-foreground uppercase">
               Ready to recover holding costs?
             </h2>
@@ -452,7 +462,7 @@ function FinalCTA() {
 /* ── Footer ── */
 function LandingFooter() {
   return (
-    <footer className="border-t border-border py-12 bg-background">
+    <footer className="border-t border-border py-12 bg-transparent">
       <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-3">
           <div className="h-7 w-7 rounded-none border border-foreground bg-foreground text-background flex items-center justify-center font-mono font-bold text-xs">
@@ -482,6 +492,173 @@ function LandingFooter() {
   );
 }
 
+/* ── Animated Canvas Grid Background ── */
+function AnimatedBackground() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationId: number;
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    const gridSize = 85;
+    const isDark = !document.documentElement.classList.contains("light");
+
+    class Packet {
+      x: number;
+      y: number;
+      speed: number;
+      gridX: number;
+      gridY: number;
+      targetGridX: number;
+      targetGridY: number;
+      progress: number;
+
+      constructor() {
+        this.reset();
+        this.progress = Math.random();
+      }
+
+      reset() {
+        const cols = Math.floor(width / gridSize) + 1;
+        const rows = Math.floor(height / gridSize) + 1;
+        this.gridX = Math.floor(Math.random() * cols);
+        this.gridY = Math.floor(Math.random() * rows);
+        this.x = this.gridX * gridSize;
+        this.y = this.gridY * gridSize;
+        this.progress = 0;
+        this.speed = 0.003 + Math.random() * 0.005;
+        this.pickNewTarget(cols, rows);
+      }
+
+      pickNewTarget(cols: number, rows: number) {
+        const dirs = [
+          { dx: 1, dy: 0 },
+          { dx: -1, dy: 0 },
+          { dx: 0, dy: 1 },
+          { dx: 0, dy: -1 },
+        ];
+        const validDirs = dirs.filter((d) => {
+          const nx = this.gridX + d.dx;
+          const ny = this.gridY + d.dy;
+          return nx >= 0 && nx < cols && ny >= 0 && ny < rows;
+        });
+
+        if (validDirs.length === 0) {
+          this.reset();
+          return;
+        }
+
+        const choice = validDirs[Math.floor(Math.random() * validDirs.length)];
+        this.targetGridX = this.gridX + choice.dx;
+        this.targetGridY = this.gridY + choice.dy;
+      }
+
+      update(cols: number, rows: number) {
+        this.progress += this.speed;
+        if (this.progress >= 1) {
+          this.gridX = this.targetGridX;
+          this.gridY = this.targetGridY;
+          this.x = this.gridX * gridSize;
+          this.y = this.gridY * gridSize;
+          this.progress = 0;
+          this.pickNewTarget(cols, rows);
+        } else {
+          const startX = this.gridX * gridSize;
+          const startY = this.gridY * gridSize;
+          const endX = this.targetGridX * gridSize;
+          const endY = this.targetGridY * gridSize;
+          this.x = startX + (endX - startX) * this.progress;
+          this.y = startY + (endY - startY) * this.progress;
+        }
+      }
+
+      draw(context: CanvasRenderingContext2D) {
+        const alpha = Math.sin(this.progress * Math.PI) * 0.35;
+        context.fillStyle = isDark ? `rgba(255, 255, 255, ${alpha})` : `rgba(0, 0, 0, ${alpha})`;
+        context.fillRect(this.x - 1.5, this.y - 1.5, 3, 3);
+      }
+    }
+
+    const packets = Array.from({ length: 25 }, () => new Packet());
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      packets.forEach((p) => p.reset());
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+      const cols = Math.floor(width / gridSize) + 1;
+      const rows = Math.floor(height / gridSize) + 1;
+
+      // Draw grid lines
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.015)" : "rgba(0, 0, 0, 0.01)";
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i < cols; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * gridSize, 0);
+        ctx.lineTo(i * gridSize, height);
+        ctx.stroke();
+      }
+
+      for (let j = 0; j < rows; j++) {
+        ctx.beginPath();
+        ctx.moveTo(0, j * gridSize);
+        ctx.lineTo(width, j * gridSize);
+        ctx.stroke();
+      }
+
+      // Draw intersection tick marks (+)
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)";
+      ctx.lineWidth = 0.75;
+      const size = 3;
+
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          const cx = i * gridSize;
+          const cy = j * gridSize;
+          ctx.beginPath();
+          ctx.moveTo(cx - size, cy);
+          ctx.lineTo(cx + size, cy);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - size);
+          ctx.lineTo(cx, cy + size);
+          ctx.stroke();
+        }
+      }
+
+      // Draw active data packets
+      packets.forEach((p) => {
+        p.update(cols, rows);
+        p.draw(ctx);
+      });
+
+      animationId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-0 opacity-60" />;
+}
+
 /* ── Page composition ── */
 const Index = () => {
   const navigate = useNavigate();
@@ -505,7 +682,7 @@ const Index = () => {
   if (user) return null; // navigating away
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-neutral-800">
+    <div className="min-h-screen bg-background text-foreground selection:bg-neutral-800 relative overflow-hidden">
       <Helmet>
         <title>Reconverse — Vehicle Recon Workflow for Modern Dealerships</title>
         <meta
@@ -526,13 +703,16 @@ const Index = () => {
           content="Vehicle recon workflow software for modern dealerships."
         />
       </Helmet>
-      <Nav />
-      <Hero />
-      <PipelineSection />
-      <Features />
-      <ValueStrip />
-      <FinalCTA />
-      <LandingFooter />
+      <AnimatedBackground />
+      <div className="relative z-10">
+        <Nav />
+        <Hero />
+        <PipelineSection />
+        <Features />
+        <ValueStrip />
+        <FinalCTA />
+        <LandingFooter />
+      </div>
     </div>
   );
 };
