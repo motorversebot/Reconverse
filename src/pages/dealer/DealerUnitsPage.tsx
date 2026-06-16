@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { decodeVinNhtsa } from "@/lib/vinDecode";
 import { isStaffOnly, canEditUnits, canArchiveUnits } from "@/lib/permissions";
 import StaffUnitDrawer from "@/components/dealer/StaffUnitDrawer";
+import VinScanner from "@/components/dealer/VinScanner";
 
 import { ALL_STATUSES, STAGE_META } from "@/lib/pipeline";
 import { hoursInStage, formatAgingDuration, agingColor, AGING_COLORS } from "@/hooks/useStageAging";
@@ -77,6 +78,7 @@ export default function DealerUnitsPage() {
   const [sortKey, setSortKey] = useState<string>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [modalOpen, setModalOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UnitForm>(emptyForm);
 
@@ -525,7 +527,7 @@ export default function DealerUnitsPage() {
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 hover:text-primary"
-                    onClick={handleScan}
+                    onClick={() => setScanOpen(true)}
                     title="Scan VIN barcode"
                   >
                     <ScanLine className="h-4 w-4" />
@@ -644,6 +646,13 @@ export default function DealerUnitsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* VIN scanner — camera + photo capture (cross-platform incl. iOS) */}
+      <VinScanner
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onDetected={(vin) => { setScanOpen(false); handleVinChange(vin); }}
+      />
 
       {/* Staff read-only drawer */}
       <StaffUnitDrawer
