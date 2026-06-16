@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCurrentDealer, useDealerMembers } from "@/hooks/useDealerData";
-import { useCreateDealerUser, useResetDealerUserPassword, useRemoveDealerUser } from "@/hooks/useDealerActions";
+import { useCreateDealerUser, useResetDealerUserPassword, useRemoveDealerUser, useUpdateDealerUser } from "@/hooks/useDealerActions";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, KeyRound, UserMinus } from "lucide-react";
 import { format } from "date-fns";
@@ -20,7 +20,17 @@ export default function DealerUsersPage() {
   const createUser = useCreateDealerUser();
   const resetPassword = useResetDealerUserPassword();
   const removeUser = useRemoveDealerUser();
+  const updateUser = useUpdateDealerUser();
   const { toast } = useToast();
+
+  const handleRoleChange = async (userId: string, role: string) => {
+    try {
+      await updateUser.mutateAsync({ userId, role });
+      toast({ title: "Role updated", description: roleLabel(role) });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -51,7 +61,7 @@ export default function DealerUsersPage() {
 
   const handleReset = async () => {
     try {
-      await resetPassword.mutateAsync({ user_id: resetUserId, new_password: resetPw, dealer_id: dealerId });
+      await resetPassword.mutateAsync({ userId: resetUserId, newPassword: resetPw });
       toast({ title: "Password reset successfully" });
       setResetOpen(false);
       setResetPw("");
@@ -63,7 +73,7 @@ export default function DealerUsersPage() {
   const handleRemove = async (userId: string) => {
     if (!confirm("Remove this user from the dealership?")) return;
     try {
-      await removeUser.mutateAsync({ dealer_id: dealerId, user_id: userId });
+      await removeUser.mutateAsync({ userId, dealerId });
       toast({ title: "User removed" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -102,7 +112,20 @@ export default function DealerUsersPage() {
                 <TableRow key={m.user_id}>
                   <TableCell className="font-medium">{m.profiles?.full_name || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{m.profiles?.email}</TableCell>
-                  <TableCell><span className="status-pill text-xs">{roleLabel(m.role)}</span></TableCell>
+                  <TableCell>
+                    {isUserAdmin && m.user_id !== membership?.user_id ? (
+                      <Select value={m.role} onValueChange={(v) => handleRoleChange(m.user_id, v)}>
+                        <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ASSIGNABLE_ROLES.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="status-pill text-xs">{roleLabel(m.role)}</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <span className={`text-xs ${m.is_active ? "text-primary" : "text-destructive"}`}>
                       {m.is_active ? "Active" : "Inactive"}

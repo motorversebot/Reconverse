@@ -10,7 +10,7 @@ function useInvalidate() {
 export function useCreateDealerUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { dealer_id: string; email: string; role: string; full_name?: string }) => {
+    mutationFn: async (payload: { dealer_id: string; email: string; password: string; role: string; full_name?: string }) => {
       const res = await apiFetch("/api/v1/reconverse/dealer-users", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -25,12 +25,31 @@ export function useCreateDealerUser() {
 
 export function useResetDealerUserPassword() {
   return useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await apiFetch(`/api/v1/reconverse/dealer-users/${userId}/reset-password`, { method: "POST" });
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const res = await apiFetch(`/api/v1/reconverse/dealer-users/${userId}/reset-password`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_password: newPassword }),
+      });
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
       return j.data;
     },
+  });
+}
+
+export function useUpdateDealerUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, ...patch }: { userId: string; role?: string; is_active?: boolean; full_name?: string; phone?: string }) => {
+      const res = await apiFetch(`/api/v1/reconverse/dealer-users/${userId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
+      return j.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dealer-members"] }),
   });
 }
 

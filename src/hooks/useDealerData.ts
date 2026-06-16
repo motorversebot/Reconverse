@@ -43,13 +43,44 @@ function normalizeDealerRole(raw?: string | null): string {
   }
 }
 
+export interface CurrentDealer {
+  dealer_id: string;
+  dealer_name: string;
+  role: string;          // DealerRole vocab
+  is_active: boolean;
+  user_id?: string;      // reconverse user id (for self-checks)
+  is_platform_admin?: boolean;
+  tier?: string;
+}
+
 export function useCurrentDealer() {
-  return useQuery({
+  return useQuery<CurrentDealer>({
     queryKey: ["current-dealer"],
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes — don't refetch on every mount
     refetchOnWindowFocus: false,
     queryFn: async () => {
+      // Preferred: real per-dealer membership from MC.
+      try {
+        const res = await apiFetch("/api/v1/reconverse/me/membership");
+        const j = await res.json().catch(() => null);
+        if (res.ok && j?.ok && j.data) {
+          const m = j.data;
+          return {
+            dealer_id: String(m.dealer?.id ?? "1"),
+            dealer_name: m.dealer?.name ?? "",
+            role: m.dealer_role ?? normalizeDealerRole(m.role),
+            is_active: true,
+            user_id: m.reconverse_user_id != null ? String(m.reconverse_user_id) : undefined,
+            is_platform_admin: !!m.is_platform_admin,
+            tier: m.tier,
+          };
+        }
+      } catch {
+        // fall through to /auth/me derivation
+      }
+      // Fallback (endpoint not live yet): derive from /auth/me so the app
+      // never hard-fails into a redirect loop.
       const user = await getMe();
       if (!user) throw new Error("not_authenticated");
       return {
@@ -57,7 +88,7 @@ export function useCurrentDealer() {
         dealer_name: "",
         role: normalizeDealerRole(user.role),
         is_active: true,
-      } as { dealer_id: string; dealer_name: string; role: string; is_active: boolean };
+      };
     },
   });
 }
@@ -399,20 +430,21 @@ export function useDealerMembers(dealerId?: string) {
   return useQuery({
     queryKey: ["dealer-members", dealerId],
     queryFn: async () => {
-      if (!dealerId) return [];
-      try {
-        const res = await apiFetch(`/api/v1/reconverse/dealers/${dealerId}/members`);
-        const j = await res.json().catch(() => null);
-        if (res.ok && j?.ok) return j.data.members as any[];
-      } catch (err) {
-        console.warn("apiFetch failed for members, using mock fallback", err);
-      }
-      return [
-        { id: "mem-1", full_name: "Owner User", email: "owner@reconverse.app", role: "owner", is_active: true },
-        { id: "mem-2", full_name: "Dealer Owner", email: "motorverseauto@gmail.com", role: "dealer_owner", is_active: true },
-        { id: "mem-3", full_name: "Admin User", email: "admin@reconverse.app", role: "dealer_admin", is_active: true },
-        { id: "mem-4", full_name: "Tech User", email: "tech@reconverse.app", role: "technician", is_active: true },
-      ];
+      // Token-scoped on the server; dealerId only gates the query being enabled.
+      const res = await apiFetch(`/api/v1/reconverse/dealer-users`);
+      // Endpoint not live yet (pre-restart) → show an empty list, not an error.
+      if (res.status === 404) return [];
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed to load users");
+      // Map MC's flat shape → the table's expected shape.
+      return (j.data as any[]).map((u) => ({
+        user_id: String(u.id),
+        auth_user_id: u.auth_user_id ?? null,
+        role: u.role,                     // already DealerRole vocab
+        is_active: u.is_active,
+        created_at: u.created_at,
+        profiles: { full_name: u.name, email: u.email },
+      }));
     },
     enabled: !!dealerId,
   });
