@@ -36,9 +36,9 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 const STAGE_TEXT: Record<string, string> = {
-  inspection: "text-amber-400",
+  inspection: "text-amber-500",
   estimate: "text-blue-400",
-  approval: "text-orange-400",
+  approval: "text-orange-500",
   repair: "text-purple-400",
   qc: "text-teal-400",
   ready: "text-accent",
@@ -206,14 +206,14 @@ export default function DealerDashboard() {
           value={kpis.oldestUnitDays > 0 ? `${Math.round(kpis.oldestUnitDays)}d` : "—"}
           sub="Maximum age"
           icon={<Clock className="h-4 w-4 text-foreground" />}
-          accent={kpis.oldestUnitDays > 10 ? "text-red-400" : kpis.oldestUnitDays > 5 ? "text-amber-400" : undefined}
+          accent={kpis.oldestUnitDays > 10 ? "text-red-500" : kpis.oldestUnitDays > 5 ? "text-amber-500" : undefined}
         />
         <KPICard
           label="Overdue Alerts"
           value={kpis.blockedCount}
           sub="Action needed"
           icon={<AlertTriangle className="h-4 w-4 text-foreground" />}
-          accent={kpis.blockedCount > 0 ? "text-amber-400" : undefined}
+          accent={kpis.blockedCount > 0 ? "text-amber-500" : undefined}
           onClick={kpis.blockedCount > 0 ? () => { setOverdueOnly(true); setStageFilter("all"); } : undefined}
         />
         <KPICard
@@ -233,7 +233,7 @@ export default function DealerDashboard() {
             </p>
             <h3 className="text-xs font-mono uppercase text-foreground/80 mt-0.5">Distribution across lanes</h3>
           </div>
-          <span className="text-[10px] font-mono text-foreground border border-border bg-neutral-950 px-2.5 py-0.5 rounded-none tabular-nums">
+          <span className="text-[10px] font-mono text-foreground border border-border bg-muted px-2.5 py-0.5 rounded-none tabular-nums">
             {kpis.activeUnits - kpis.readyCount} pending
           </span>
         </div>
@@ -259,7 +259,7 @@ export default function DealerDashboard() {
                 disabled={stage === "sold"}
                 className={cn(
                   "border p-4 text-left transition-colors duration-150 rounded-none relative group border-border",
-                  count > 0 ? "hover:border-foreground hover:bg-neutral-950" : "opacity-40 cursor-default",
+                  count > 0 ? "hover:border-foreground hover:bg-muted" : "opacity-40 cursor-default",
                   stage === "sold" && "cursor-default"
                 )}
               >
@@ -279,7 +279,7 @@ export default function DealerDashboard() {
                     </span>
                   ) : <span />}
                   {overdue > 0 && (
-                    <span className="text-[9px] font-mono font-bold text-red-400 bg-red-950/20 border border-red-950 px-1 py-0.5 rounded-none tabular-nums">
+                    <span className="text-[9px] font-mono font-bold text-red-500 bg-red-950/20 border border-red-950 px-1 py-0.5 rounded-none tabular-nums">
                       {overdue} overdue
                     </span>
                   )}
@@ -315,11 +315,11 @@ export default function DealerDashboard() {
                   onClick={() => {
                     if (a.stage) { setStageFilter(a.stage); setOverdueOnly(true); }
                   }}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-none bg-neutral-950 border border-border hover:border-foreground transition-colors text-left"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-none bg-muted border border-border hover:border-foreground transition-colors text-left"
                 >
                   <span className="text-xs font-mono uppercase text-foreground/80">{a.label}</span>
                   <div className="flex items-center gap-2.5">
-                    <Badge className="bg-red-950/20 text-red-400 hover:bg-red-950/30 border border-red-950 text-[9px] font-mono font-bold px-2 rounded-none">
+                    <Badge className="bg-red-950/20 text-red-500 hover:bg-red-950/30 border border-red-950 text-[9px] font-mono font-bold px-2 rounded-none">
                       {a.count} units
                     </Badge>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40" />
@@ -349,11 +349,11 @@ export default function DealerDashboard() {
             {agingBuckets.filter(b => b.total > 0).map(b => {
               const meta = STAGE_META[b.stage as UnitStatus];
               return (
-                <div key={b.stage} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 items-center px-2 py-2.5 border-b border-border/10 hover:bg-neutral-950/40 transition-colors">
+                <div key={b.stage} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 items-center px-2 py-2.5 border-b border-border/10 hover:bg-muted/40 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={cn("h-1.5 w-1.5 rounded-none shrink-0", STAGE_COLORS[b.stage])} />
                     <span className="text-xs font-mono uppercase text-foreground/80 truncate">{meta?.label}</span>
-                    <span className="text-[9px] font-mono text-muted-foreground/50 bg-neutral-950 border border-border px-1.5 py-0.5 rounded-none">{b.total}</span>
+                    <span className="text-[9px] font-mono text-muted-foreground/50 bg-muted border border-border px-1.5 py-0.5 rounded-none">{b.total}</span>
                   </div>
                   <BucketCell count={b.green} color="emerald" onClick={() => setStageFilter(b.stage)} />
                   <BucketCell count={b.yellow} color="amber" onClick={() => setStageFilter(b.stage)} />
@@ -411,7 +411,7 @@ export default function DealerDashboard() {
           </div>
           <div className="flex items-center gap-4 px-1 pt-2 border-t border-border">
             <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-none bg-neutral-600" />
+              <span className="h-1.5 w-1.5 rounded-none bg-muted-foreground" />
               <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">Vehicles Added</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -484,11 +484,11 @@ export default function DealerDashboard() {
               placeholder="Search VIN, stock number, make model..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-xs font-mono bg-neutral-950 border-border rounded-none focus-visible:ring-foreground focus-visible:border-foreground"
+              className="pl-9 h-9 text-xs font-mono bg-muted border-border rounded-none focus-visible:ring-foreground focus-visible:border-foreground"
             />
           </div>
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-[150px] h-9 text-[10px] font-mono uppercase tracking-wider bg-neutral-950 border-border rounded-none">
+            <SelectTrigger className="w-[150px] h-9 text-[10px] font-mono uppercase tracking-wider bg-muted border-border rounded-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover border border-border text-[10px] font-mono uppercase tracking-wider rounded-none">
@@ -499,7 +499,7 @@ export default function DealerDashboard() {
               <SelectItem value="ready">Ready</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-2 bg-neutral-950 px-3 py-1.5 border border-border h-9 shrink-0 rounded-none">
+          <div className="flex items-center gap-2 bg-muted px-3 py-1.5 border border-border h-9 shrink-0 rounded-none">
             <Switch
               checked={overdueOnly}
               onCheckedChange={setOverdueOnly}
@@ -513,7 +513,7 @@ export default function DealerDashboard() {
         <div className="overflow-x-auto border border-border rounded-none">
           <table className="w-full text-xs text-left">
             <thead>
-              <tr className="border-b border-border bg-neutral-950/50 select-none font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
+              <tr className="border-b border-border bg-muted/50 select-none font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
                 <th className="py-3 px-4">Vehicle Details</th>
                 <th className="py-3 px-4">VIN Identifier</th>
                 <th className="py-3 px-4">Stock Num</th>
@@ -531,7 +531,7 @@ export default function DealerDashboard() {
                   <tr
                     key={u.id}
                     onClick={() => navigate(`/dealer/units/${u.id}`)}
-                    className="border-b border-border/10 hover:bg-neutral-900/50 cursor-pointer transition-colors"
+                    className="border-b border-border/10 hover:bg-muted/50 cursor-pointer transition-colors"
                   >
                     <td className="py-3 px-4">
                       <div className="font-bold text-foreground">
@@ -548,7 +548,7 @@ export default function DealerDashboard() {
                       {u.stock_number ?? "—"}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-border text-[9px] font-mono uppercase bg-neutral-950 text-foreground">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-border text-[9px] font-mono uppercase bg-muted text-foreground">
                         <span className={cn("h-1 w-1 rounded-none shrink-0", STAGE_COLORS[u.status])} />
                         {meta.label}
                       </span>
@@ -556,8 +556,8 @@ export default function DealerDashboard() {
                     <td className="py-3 px-4 text-right font-mono tabular-nums">
                       <span className={cn(
                         "font-bold",
-                        u.daysInStage >= 6 ? "text-red-400" :
-                        u.daysInStage >= 3 ? "text-amber-400" : "text-foreground"
+                        u.daysInStage >= 6 ? "text-red-500" :
+                        u.daysInStage >= 3 ? "text-amber-500" : "text-foreground"
                       )}>
                         {formatAgingDuration(u.hoursInStage)}
                       </span>
@@ -569,7 +569,7 @@ export default function DealerDashboard() {
                       {u.promise_date ? (
                         <span className={cn(
                           "tabular-nums",
-                          u.isPromiseOverdue ? "text-red-400" : "text-muted-foreground/50"
+                          u.isPromiseOverdue ? "text-red-500" : "text-muted-foreground/50"
                         )}>
                           {new Date(u.promise_date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase()}
                         </span>
@@ -584,16 +584,16 @@ export default function DealerDashboard() {
                             key={b}
                             className={cn(
                               "inline-block px-1.5 py-0.5 border uppercase",
-                              b === "Promise" ? "bg-red-950/20 text-red-400 border-red-950" :
-                              b === "Approval" ? "bg-orange-950/20 text-orange-400 border-orange-950" :
-                              "bg-neutral-950 text-foreground border-border"
+                              b === "Promise" ? "bg-red-950/20 text-red-500 border-red-950" :
+                              b === "Approval" ? "bg-orange-950/20 text-orange-500 border-orange-950" :
+                              "bg-muted text-foreground border-border"
                             )}
                           >
                             {b}
                           </span>
                         ))}
                         {u.isOverdue && !u.blockers.includes("Promise") && (
-                          <span className="inline-block px-1.5 py-0.5 border bg-amber-950/20 text-amber-400 border-amber-950 uppercase">
+                          <span className="inline-block px-1.5 py-0.5 border bg-amber-950/20 text-amber-500 border-amber-950 uppercase">
                             Late
                           </span>
                         )}
@@ -664,9 +664,9 @@ function KPICard({
 function BucketCell({ count, color, onClick }: { count: number; color: string; onClick?: () => void }) {
   if (count === 0) return <span className="text-center text-[11px] text-muted-foreground/20 font-mono select-none">—</span>;
   const colorMap: Record<string, string> = {
-    emerald: "border border-border text-foreground hover:border-foreground bg-neutral-950",
-    amber: "border border-neutral-700 text-neutral-300 hover:border-foreground bg-neutral-950",
-    red: "border border-red-950 text-red-400 hover:border-red-500 bg-neutral-950/40",
+    emerald: "border border-border text-foreground hover:border-foreground bg-muted",
+    amber: "border border-border text-muted-foreground hover:border-foreground bg-muted",
+    red: "border border-red-950 text-red-500 hover:border-red-500 bg-muted/40",
   };
   return (
     <button

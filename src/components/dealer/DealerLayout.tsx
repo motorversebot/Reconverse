@@ -50,8 +50,8 @@ function SidebarNavItem({
           "group relative flex items-center gap-3 rounded-none text-[11px] font-mono uppercase tracking-wider transition-colors duration-150",
           collapsed ? "justify-center px-3 py-3" : "px-4 py-3 border-l-2",
           isActive
-            ? "border-foreground text-foreground bg-neutral-950"
-            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-neutral-950/50"
+            ? "border-foreground text-foreground bg-muted"
+            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
         )
       }
     >
@@ -175,7 +175,7 @@ function SidebarContent({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border p-3.5 space-y-2 bg-neutral-950/20">
+      <div className="border-t border-border p-3.5 space-y-2 bg-muted/20">
         {isPlatformAdmin && (
           <NavLink
             to="/platform"
@@ -195,7 +195,7 @@ function SidebarContent({
           variant="ghost"
           size="sm"
           className={cn(
-            "w-full gap-2 text-muted-foreground/70 hover:text-foreground hover:bg-neutral-900 rounded-none font-mono uppercase text-[10px] tracking-wider border border-border h-8",
+            "w-full gap-2 text-muted-foreground/70 hover:text-foreground hover:bg-muted rounded-none font-mono uppercase text-[10px] tracking-wider border border-border h-8",
             collapsed ? "justify-center px-0" : "justify-start px-3"
           )}
           onClick={signOut}
@@ -208,7 +208,7 @@ function SidebarContent({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-center text-muted-foreground/30 hover:text-foreground hover:bg-neutral-900 mt-1 rounded-none h-7"
+            className="w-full justify-center text-muted-foreground/30 hover:text-foreground hover:bg-muted mt-1 rounded-none h-7"
             onClick={onCollapse}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
