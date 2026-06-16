@@ -14,7 +14,7 @@ import { useCreateUnit, useUpdateUnit, useRestoreUnit } from "@/hooks/useDealerA
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
-import { apiFetch } from "@/lib/api";
+import { decodeVinNhtsa } from "@/lib/vinDecode";
 import { isStaffOnly, canEditUnits, canArchiveUnits } from "@/lib/permissions";
 import StaffUnitDrawer from "@/components/dealer/StaffUnitDrawer";
 
@@ -199,20 +199,14 @@ export default function DealerUnitsPage() {
     setDecodedRaw(null);
 
     try {
-      // VIN decode via API proxy
-        const vinRes = await apiFetch("/api/v1/reconverse/vin-decode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vin: vin.trim().toUpperCase() }),
-        });
-
-      const data = await vinRes.json();
-      if (!vinRes.ok) {
-        setDecodeError(data.error || "Failed to decode VIN");
+      // VIN decode via NHTSA vPIC (client-side, VIN-only). MC's
+      // /api/v1/reconverse/vin-decode isn't implemented yet, so we decode
+      // against the same public source the recall checker uses.
+      const { decoded: d, raw } = await decodeVinNhtsa(vin.trim().toUpperCase());
+      if (!d.year && !d.make && !d.model) {
+        setDecodeError("Could not decode this VIN");
         return;
       }
-
-      const d = data.decoded as DecodedData;
       setForm((prev) => ({
         ...prev,
         year: d.year?.toString() || prev.year,
@@ -224,7 +218,7 @@ export default function DealerUnitsPage() {
         drive_type: d.drive_type || prev.drive_type,
         transmission: d.transmission || prev.transmission,
       }));
-      setDecodedRaw(data.raw || null);
+      setDecodedRaw(raw);
       setDecoded(true);
       setFieldsLocked(true);
     } catch {
