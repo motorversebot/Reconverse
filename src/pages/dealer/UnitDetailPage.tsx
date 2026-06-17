@@ -8,6 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -17,7 +18,7 @@ import {
   ArrowLeft, Car, MoreVertical, Archive, ArrowRight,
   ClipboardCheck, FileText, Camera, StickyNote, Activity,
   Calculator, ThumbsUp, Wrench, ShieldCheck, Package, FileDown, Loader2,
-  CalendarIcon, X,
+  CalendarIcon, X, Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
@@ -39,7 +40,7 @@ import EstimateItemsTable from "@/components/dealer/EstimateItemsTable";
 import ApprovalReview from "@/components/dealer/ApprovalReview";
 import RepairView from "@/components/dealer/estimate/RepairView";
 import {
-  STAGE_META, STAGE_DEFAULT_TAB, STATUS_TO_SLUG,
+  STAGE_META, STAGE_DEFAULT_TAB, STATUS_TO_SLUG, ALL_STATUSES,
   isStageBefore, type UnitStatus,
 } from "@/lib/pipeline";
 import { isStaffOnly, canArchiveUnits, canAdvanceStage, canEditUnits } from "@/lib/permissions";
@@ -205,6 +206,18 @@ export default function UnitDetailPage() {
     }
   };
 
+  // Manual stage override from the overflow menu — move the unit to any lane.
+  const moveToLane = async (target: UnitStatus) => {
+    if (target === currentStatus) return;
+    try {
+      await updateUnit.mutateAsync({ id: unit.id, status: target });
+      toast({ title: `Moved to ${STAGE_META[target].label}` });
+      setActiveTab(null);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handleExportPdf = async () => {
     setExporting(true);
     try {
@@ -265,10 +278,34 @@ export default function UnitDetailPage() {
               <DropdownMenuItem className="sm:hidden" onClick={handleExportPdf} disabled={exporting}>
                 <FileDown className="h-4 w-4 mr-2" /> Export PDF
               </DropdownMenuItem>
+              {/* Move / send the unit to a different recon lane */}
+              {showAdvanceButton && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Layers className="h-4 w-4 mr-2" /> Send to Lane
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {ALL_STATUSES.map((s) => (
+                      <DropdownMenuItem
+                        key={s}
+                        disabled={s === currentStatus || updateUnit.isPending}
+                        onClick={() => moveToLane(s)}
+                      >
+                        <span className={`h-2 w-2 rounded-full mr-2 ${STAGE_META[s].color}`} />
+                        {STAGE_META[s].label}
+                        {s === currentStatus && <span className="ml-auto text-[10px] text-muted-foreground">current</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
               {showArchive && (
-                <DropdownMenuItem onClick={() => setArchiveOpen(true)} className="text-destructive focus:text-destructive">
-                  <Archive className="h-4 w-4 mr-2" /> Archive Vehicle
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setArchiveOpen(true)} className="text-destructive focus:text-destructive">
+                    <Archive className="h-4 w-4 mr-2" /> Archive Vehicle
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
