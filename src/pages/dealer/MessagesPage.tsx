@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentDealer, useDealerMembers, useDealerUnits } from "@/hooks/useDealerData";
 import {
-  listChannels, createChannel, openDm, listMessages, sendMessage, channelTitle,
+  listChannels, createChannel, openDm, listMessages, sendMessage, channelTitle, markChannelRead,
   type ChatChannel, type ChatMessage,
 } from "@/lib/chat";
 import {
@@ -41,6 +41,13 @@ export default function MessagesPage() {
 
   const memberName = (id: number) => (members as Member[] | undefined)?.find((m) => Number(m.user_id) === id)?.profiles?.full_name || `User ${id}`;
 
+  const openChannel = async (id: number) => {
+    setActiveId(id);
+    try { await markChannelRead(id); } catch { /* best-effort */ }
+    qc.invalidateQueries({ queryKey: ["chat-channels", dealerId] });
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+  };
+
   if (!available) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
@@ -69,12 +76,17 @@ export default function MessagesPage() {
           {channels.map((c) => (
             <button
               key={c.id}
-              onClick={() => setActiveId(c.id)}
+              onClick={() => openChannel(c.id)}
               className={`w-full text-left px-3 py-2.5 border-b border-border/40 hover:bg-muted/40 transition-colors ${activeId === c.id ? "bg-muted/50" : ""}`}
             >
               <div className="flex items-center gap-2">
                 {c.kind === "dm" ? <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <Hash className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                <span className="text-sm font-medium text-foreground truncate flex-1">{channelTitle(c, selfId)}</span>
+                <span className={`text-sm truncate flex-1 ${c.unread ? "font-bold text-foreground" : "font-medium text-foreground"}`}>{channelTitle(c, selfId)}</span>
+                {!!c.unread && c.unread > 0 && activeId !== c.id && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
+                    {c.unread > 99 ? "99+" : c.unread}
+                  </span>
+                )}
               </div>
               {c.last_message && (
                 <p className="text-[11px] text-muted-foreground truncate mt-0.5 pl-5.5">{c.last_message.body}</p>
@@ -138,6 +150,18 @@ function Thread({ channelId, channel, selfId, members, units, memberName, onBack
     refetchInterval: 6000,
   });
   const messages = messagesQ.data ?? [];
+
+  // Keep the channel marked read while it's open (clears the bell/unread badge).
+  const lastMsgId = messages.length ? messages[messages.length - 1].id : 0;
+  useEffect(() => {
+    if (!channelId) return;
+    markChannelRead(channelId)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["chat-channels"] });
+        qc.invalidateQueries({ queryKey: ["notifications"] });
+      })
+      .catch(() => { /* best-effort */ });
+  }, [channelId, lastMsgId, qc]);
 
   const onTextChange = (v: string) => {
     setText(v);

@@ -20,6 +20,7 @@ export interface ChatChannel {
   name: string | null;
   kind: ChannelKind;
   created_at: string;
+  unread?: number;
   last_message?: { body: string; created_at: string; sender_id: number | null } | null;
   members: ChatMember[];
 }
@@ -82,6 +83,17 @@ export async function sendMessage(channelId: number, payload: { body: string; un
     body: JSON.stringify({ body: payload.body, unit_id: payload.unit_id ?? null, mentions: payload.mentions ?? [] }),
   });
   if (!r.ok) throw new Error(r.error || "send_failed");
+}
+
+/** Mark a channel read (clears its unread count) for the current user. */
+export async function markChannelRead(channelId: number): Promise<void> {
+  await call(`/channels/${channelId}/read`, { method: "POST" });
+}
+
+/** Total unread messages across all of the caller's channels. */
+export async function unreadTotal(): Promise<number> {
+  const { channels } = await listChannels();
+  return channels.reduce((sum, c) => sum + (c.unread || 0), 0);
 }
 
 /** Friendly title for a channel (DMs show the other member's name). */
