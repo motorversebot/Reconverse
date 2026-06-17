@@ -6,8 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Eye, Search } from "lucide-react";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
 import { SLUG_TO_STATUS, STAGE_META, type UnitStatus } from "@/lib/pipeline";
+import { hoursInStage, formatAgingDuration } from "@/hooks/useStageAging";
 import { format } from "date-fns";
 import { useState } from "react";
+
+/** Promise-date label + color (overdue red, due-today yellow, future green). */
+function promiseInfo(promise?: string | null): { text: string; cls: string } {
+  if (!promise) return { text: "Promise: —", cls: "text-muted-foreground" };
+  const d = new Date(promise.length <= 10 ? `${promise}T00:00:00` : promise);
+  if (isNaN(d.getTime())) return { text: "Promise: —", cls: "text-muted-foreground" };
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(d); due.setHours(0, 0, 0, 0);
+  const text = `Promise: ${format(d, "MMM d, yyyy")}`;
+  if (due.getTime() < today.getTime()) return { text, cls: "text-destructive font-medium" };
+  if (due.getTime() === today.getTime()) return { text, cls: "text-amber-600 font-medium" };
+  return { text, cls: "text-emerald-600" };
+}
+
+/** Time-in-stage label, falling back to created_at, then "—". */
+function timerLabel(unit: { stage_entered_at?: string | null; created_at?: string | null }, stageLabel: string): string {
+  const t = unit.stage_entered_at || unit.created_at;
+  if (!t || isNaN(new Date(t).getTime())) return "Timer: —";
+  return `In ${stageLabel}: ${formatAgingDuration(hoursInStage(t))}`;
+}
 
 export default function PipelineStagePage() {
   const { stage } = useParams<{ stage: string }>();
@@ -70,29 +91,36 @@ export default function PipelineStagePage() {
           {filtered.map((unit: any) => {
             const title = [unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "Untitled";
             return (
+              {(() => {
+              const p = promiseInfo(unit.promise_date);
+              return (
               <Card
                 key={unit.id}
-                className="glass-panel border-border p-4 flex items-center gap-4 cursor-pointer hover:border-primary/30 transition-colors"
+                className="glass-panel border-border p-4 flex items-start gap-4 cursor-pointer hover:border-primary/30 transition-colors"
                 onClick={() => navigate(`/dealer/units/${unit.id}`)}
               >
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-1.5">
                   <p className="text-sm font-semibold text-foreground truncate">{title}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    {unit.stock_number && <span>#{unit.stock_number}</span>}
-                    {unit.vin && (
-                      <span className="font-mono text-[10px]">
-                        …{unit.vin.slice(-6)}
-                      </span>
-                    )}
+                  {/* Identifiers */}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span>Stock #: {unit.stock_number || "—"}</span>
+                    <span className="font-mono break-all">VIN: {unit.vin || "—"}</span>
+                    <span>RO #: {unit.repair_order_number || "—"}</span>
+                    <span>Tag #: {unit.tag_number || "—"}</span>
+                  </div>
+                  {/* Operational */}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    <span className="text-muted-foreground">Tech: {unit.assigned_technician || "Unassigned"}</span>
+                    <span className={p.cls}>{p.text}</span>
+                    <span className="text-muted-foreground">{timerLabel(unit, meta.label)}</span>
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground/60">
-                  {format(new Date(unit.updated_at), "MMM d")}
-                </span>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </Card>
+              );
+              })()}
             );
           })}
         </div>

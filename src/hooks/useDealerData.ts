@@ -355,6 +355,9 @@ function mapMcUnit(u: Record<string, unknown>) {
     dealer_id: String(u.dealer_id),
     promise_date: (u.promise_date as string) ?? null,
     notes: (u.notes as string) ?? null,
+    assigned_technician: (u.assigned_to_name as string) ?? (u.technician_name as string) ?? null,
+    repair_order_number: (u.repair_order_number as string) ?? (u.ro_number as string) ?? null,
+    tag_number: (u.tag_number as string) ?? null,
     is_deleted: archived,
   };
 }
