@@ -158,6 +158,27 @@ export function useUpdateUnit() {
   });
 }
 
+/**
+ * Move a unit to a recon lane (stage). Uses the dedicated MC endpoint that sets
+ * current_stage_id by slug — NOT units.status (which is active/hold/sold/archived
+ * and would be rejected for a stage slug like "estimate").
+ */
+export function useMoveUnitStage() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
+      const res = await apiFetch(`/api/v1/reconverse/units/${id}/move-to-stage`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "move_failed");
+      return j.data;
+    },
+    onSuccess: () => invalidate("dealer-units", "dealer-unit", "dashboard-command-center"),
+  });
+}
+
 export function useArchiveUnit() {
   const invalidate = useInvalidate();
   return useMutation({

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
-import { useArchiveUnit, useUpdateUnit } from "@/hooks/useDealerActions";
+import { useArchiveUnit, useUpdateUnit, useMoveUnitStage } from "@/hooks/useDealerActions";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import StageProgressBar from "@/components/dealer/StageProgressBar";
@@ -128,6 +128,7 @@ export default function UnitDetailPage() {
   const { data: units } = useDealerUnits(dealerId);
   const archiveUnit = useArchiveUnit();
   const updateUnit = useUpdateUnit();
+  const moveStage = useMoveUnitStage();
   const { toast } = useToast();
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -187,7 +188,7 @@ export default function UnitDetailPage() {
   const handleAdvanceStage = async () => {
     if (!nextStatus) return;
     try {
-      await updateUnit.mutateAsync({ id: unit.id, status: nextStatus });
+      await moveStage.mutateAsync({ id: unit.id, stage: nextStatus });
       const nextMeta = STAGE_META[nextStatus];
       toast({ title: `Moved to ${nextMeta.label}` });
       setActiveTab(null);
@@ -210,7 +211,7 @@ export default function UnitDetailPage() {
   const moveToLane = async (target: UnitStatus) => {
     if (target === currentStatus) return;
     try {
-      await updateUnit.mutateAsync({ id: unit.id, status: target });
+      await moveStage.mutateAsync({ id: unit.id, stage: target });
       toast({ title: `Moved to ${STAGE_META[target].label}` });
       setActiveTab(null);
     } catch (err: any) {
@@ -288,7 +289,7 @@ export default function UnitDetailPage() {
                     {ALL_STATUSES.map((s) => (
                       <DropdownMenuItem
                         key={s}
-                        disabled={s === currentStatus || updateUnit.isPending}
+                        disabled={s === currentStatus || moveStage.isPending}
                         onClick={() => moveToLane(s)}
                       >
                         <span className={`h-2 w-2 rounded-full mr-2 ${STAGE_META[s].color}`} />
@@ -378,7 +379,7 @@ export default function UnitDetailPage() {
             <InspectionChecklist unitId={unit.id} dealerId={dealerId} readOnly={mpiReadOnly} />
             {showAdvanceButton && currentStatus === "inspection" && nextStatus && (
               <div className="flex sm:justify-end pt-2 sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
+                <Button onClick={handleAdvanceStage} disabled={moveStage.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
                   Move to {STAGE_META[nextStatus].label}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -436,7 +437,7 @@ export default function UnitDetailPage() {
             <InspectionChecklist unitId={unit.id} dealerId={dealerId} />
             {showAdvanceButton && currentStatus === "qc" && nextStatus && (
               <div className="flex sm:justify-end pt-2 sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
+                <Button onClick={handleAdvanceStage} disabled={moveStage.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
                   Ready for Sale
                   <ArrowRight className="h-4 w-4" />
                 </Button>
