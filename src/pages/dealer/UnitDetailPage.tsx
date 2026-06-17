@@ -34,6 +34,7 @@ import UnitCommentsCard from "@/components/dealer/UnitCommentsCard";
 import UnitActivityCard from "@/components/dealer/UnitActivityCard";
 import ActivityTab, { useActivityCount } from "@/components/dealer/activity/ActivityTab";
 import CarfaxCard from "@/components/dealer/CarfaxCard";
+import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
 import EstimateBuilder from "@/components/dealer/estimate/EstimateBuilder";
 import ApprovalView from "@/components/dealer/estimate/ApprovalView";
 import RepairView from "@/components/dealer/estimate/RepairView";
@@ -278,6 +279,7 @@ export default function UnitDetailPage() {
           {unit.vin && <span className="font-mono break-all">{unit.vin}</span>}
           <span>Stock #{unit.stock_number?.trim() || "—"}</span>
           <Badge variant="outline" className="text-xs">{stageMeta?.label ?? unit.status}</Badge>
+          <OpenRecallBadge count={(unit as any).open_recall_count} />
         </div>
       </div>
 

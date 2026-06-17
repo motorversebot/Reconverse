@@ -389,6 +389,15 @@ function mapMcUnit(u: Record<string, unknown>) {
     assigned_technician: (u.assigned_to_name as string) ?? (u.technician_name as string) ?? null,
     repair_order_number: (u.repair_order_number as string) ?? (u.ro_number as string) ?? null,
     tag_number: (u.tag_number as string) ?? null,
+    // Automatic CARFAX + recall check results (for badges + cards).
+    carfax_status: (u.carfax_status as string) ?? null,
+    carfax_report_url: (u.carfax_report_url as string) ?? null,
+    carfax_last_checked_at: (u.carfax_last_checked_at as string) ?? null,
+    recall_status: (u.recall_status as string) ?? null,
+    open_recall_count: Number(u.open_recall_count ?? 0),
+    has_open_recalls: !!u.has_open_recalls,
+    open_recall_summary: (u.open_recall_summary as string) ?? null,
+    open_recall_last_checked_at: (u.open_recall_last_checked_at as string) ?? null,
     is_deleted: archived,
   };
 }
@@ -447,6 +456,7 @@ export function useDealerUnits(dealerId?: string) {
     enabled: !!dealerId,
   });
 }
+// (multi-dealer: memberships[] + active_dealer_id consumed from /me/membership)
 
 export function useDealerArchivedUnits(dealerId?: string) {
   return useQuery({

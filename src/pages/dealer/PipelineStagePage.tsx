@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, Search } from "lucide-react";
+import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
 import { SLUG_TO_STATUS, STAGE_META, type UnitStatus } from "@/lib/pipeline";
 import { hoursInStage, formatAgingDuration } from "@/hooks/useStageAging";
@@ -98,7 +99,10 @@ export default function PipelineStagePage() {
                 onClick={() => navigate(`/dealer/units/${unit.id}`)}
               >
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  <p className="text-sm font-semibold text-foreground truncate">{title}</p>
+                  <p className="text-sm font-semibold text-foreground truncate flex items-center gap-2">
+                    <span className="truncate">{title}</span>
+                    <OpenRecallBadge count={unit.open_recall_count} size="xs" />
+                  </p>
                   {/* Identifiers */}
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span>Stock #: {unit.stock_number || "—"}</span>

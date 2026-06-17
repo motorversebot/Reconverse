@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import { decodeVinNhtsa } from "@/lib/vinDecode";
+import { runUnitChecks } from "@/lib/unitChecks";
+import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
 import { isStaffOnly, canEditUnits, canArchiveUnits } from "@/lib/permissions";
 import StaffUnitDrawer from "@/components/dealer/StaffUnitDrawer";
 import VinScanner from "@/components/dealer/VinScanner";
@@ -319,7 +321,15 @@ export default function DealerUnitsPage() {
         setModalOpen(false);
       } else {
         const newUnit = await createUnit.mutateAsync({ dealer_id: dealerId, ...payload });
-        toast({ title: "Unit created" });
+        // Kick off CARFAX + open-recall checks in the background (non-blocking;
+        // failures never block unit creation). Results show on the unit.
+        if (newUnit?.vin || payload.vin) {
+          void runUnitChecks({ id: String(newUnit.id), vin: (newUnit?.vin as string) || (payload.vin as string) }, dealerId)
+            .catch(() => { /* surfaced on the unit's card */ });
+          toast({ title: "Unit created", description: "Running CARFAX and recall checks…" });
+        } else {
+          toast({ title: "Unit created" });
+        }
         setModalOpen(false);
         navigate(`/dealer/units/${newUnit.id}`);
       }
@@ -405,7 +415,12 @@ export default function DealerUnitsPage() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => staffOnly ? setDrawerUnit(u) : navigate(`/dealer/units/${u.id}`)}
                     >
-                      <TableCell className="font-medium">{u.year} {u.make} {u.model}</TableCell>
+                      <TableCell className="font-medium">
+                        <span className="inline-flex items-center gap-2 flex-wrap">
+                          {u.year} {u.make} {u.model}
+                          <OpenRecallBadge count={(u as any).open_recall_count} size="xs" />
+                        </span>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{u.stock_number || "—"}</TableCell>
                       <TableCell className="text-muted-foreground font-mono text-xs">{u.vin || "—"}</TableCell>
                       <TableCell><span className="status-pill text-xs">{STAGE_META[u.status as keyof typeof STAGE_META]?.label ?? u.status}</span></TableCell>

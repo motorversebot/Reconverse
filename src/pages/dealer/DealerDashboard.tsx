@@ -116,6 +116,13 @@ export default function DealerDashboard() {
         type: "promise",
       });
     }
+    // Open safety recalls (confirmed not-completed) across active inventory.
+    const openRecallUnits = data.enrichedUnits.filter(
+      (u) => u.status !== "sold" && Number((u as any).open_recall_count || 0) > 0,
+    ).length;
+    if (openRecallUnits > 0) {
+      items.unshift({ label: "Open safety recalls", count: openRecallUnits, type: "recall" });
+    }
     return items;
   }, [data]);
 
