@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import SignupModal from "@/components/SignupModal";
 
 /* ── Pipeline stages used in the centerpiece ── */
 const STAGES = [
@@ -31,7 +32,7 @@ const STAGES = [
 ] as const;
 
 /* ── Top navigation ── */
-function Nav() {
+function Nav({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <nav className="sticky top-0 z-40 bg-background/85 backdrop-blur-md border-b border-border">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -49,10 +50,8 @@ function Nav() {
           >
             Sign in
           </Link>
-          <Button asChild size="sm" className="rounded-none border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground text-xs font-mono uppercase tracking-wider h-8 px-4">
-            <Link to="/login" id="nav-getstarted-btn">
-              Get Started
-            </Link>
+          <Button onClick={onGetStarted} size="sm" id="nav-getstarted-btn" className="rounded-none border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground text-xs font-mono uppercase tracking-wider h-8 px-4">
+            Get Started
           </Button>
         </div>
       </div>
@@ -191,7 +190,7 @@ function ReconPhaseTracker() {
 }
 
 /* ── Hero ── */
-function Hero() {
+function Hero({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <section className="relative border-b border-border bg-transparent py-16 sm:py-24">
       <div className="max-w-6xl mx-auto px-6">
@@ -212,10 +211,8 @@ function Hero() {
             </p>
  
             <div className="mt-8 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-              <Button asChild size="lg" className="w-full sm:w-auto rounded-none border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground text-xs font-mono uppercase tracking-wider h-11 px-8">
-                <Link to="/login" id="hero-getstarted-btn">
-                  Get Started Free
-                </Link>
+              <Button onClick={onGetStarted} size="lg" id="hero-getstarted-btn" className="w-full sm:w-auto rounded-none border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground text-xs font-mono uppercase tracking-wider h-11 px-8">
+                Get Started Free
               </Button>
               <Button asChild size="lg" variant="outline" className="w-full sm:w-auto rounded-none border border-border bg-transparent text-foreground hover:bg-neutral-900 text-xs font-mono uppercase tracking-wider h-11 px-8">
                 <Link to="/login" id="hero-signin-btn">Member Sign In</Link>
@@ -424,7 +421,7 @@ function ValueStrip() {
 }
 
 /* ── Final Call To Action ── */
-function FinalCTA() {
+function FinalCTA({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <section className="relative py-16 sm:py-20 bg-transparent">
       <div className="max-w-4xl mx-auto px-6">
@@ -443,10 +440,8 @@ function FinalCTA() {
               Consolidate your reconditioning loop under one pipeline. Start tracking units today.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="w-full sm:w-auto rounded-none border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground text-xs font-mono uppercase tracking-wider h-11 px-8">
-                <Link to="/login" id="cta-getstarted-btn">
-                  Start Free Trial
-                </Link>
+              <Button onClick={onGetStarted} size="lg" id="cta-getstarted-btn" className="w-full sm:w-auto rounded-none border border-foreground bg-foreground text-background hover:bg-background hover:text-foreground text-xs font-mono uppercase tracking-wider h-11 px-8">
+                Start Free Trial
               </Button>
               <Button asChild size="lg" variant="outline" className="w-full sm:w-auto rounded-none border border-border bg-transparent text-foreground hover:bg-neutral-900 text-xs font-mono uppercase tracking-wider h-11 px-8">
                 <Link to="/login" id="cta-signin-btn">Member Sign In</Link>
@@ -663,6 +658,7 @@ function AnimatedBackground() {
 const Index = () => {
   const navigate = useNavigate();
   const { user, isPlatformAdmin, loading } = useAuth();
+  const [showSignup, setShowSignup] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -705,14 +701,19 @@ const Index = () => {
       </Helmet>
       <AnimatedBackground />
       <div className="relative z-10">
-        <Nav />
-        <Hero />
+        <Nav onGetStarted={() => setShowSignup(true)} />
+        <Hero onGetStarted={() => setShowSignup(true)} />
         <PipelineSection />
         <Features />
         <ValueStrip />
-        <FinalCTA />
+        <FinalCTA onGetStarted={() => setShowSignup(true)} />
         <LandingFooter />
       </div>
+      <SignupModal
+        open={showSignup}
+        onOpenChange={setShowSignup}
+        onSwitchToLogin={() => navigate("/login")}
+      />
     </div>
   );
 };
