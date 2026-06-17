@@ -87,7 +87,7 @@ export default function TireWheelInspection({ unitId, dealerId, readOnly = false
   const treadRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const psiRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const statusCfg = STATUS_CONFIG[status];
+  const statusCfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.ok;
   const StatusIcon = statusCfg.icon;
 
   const advanceToNextField = useCallback((

@@ -366,7 +366,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
 
           const filteredItems = items.filter(i => matchesFilter(i, filterMode));
           const severity = computeSectionSeverity(items);
-          const sevCfg = SEVERITY_CONFIG[severity];
+          const sevCfg = SEVERITY_CONFIG[severity] ?? Object.values(SEVERITY_CONFIG)[0];
           const isOpen = resolvedExpanded[category] ?? false;
 
           const catPassed = items.filter(i => i.status === "pass").length;
