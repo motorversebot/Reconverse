@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,18 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
   Upload, FileSpreadsheet, ShieldCheck, AlertTriangle, Download,
-  RotateCcw, Loader2, CheckCircle2,
+  RotateCcw, Loader2, CheckCircle2, ChevronDown, Save,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   checkVin, normalizeVin, vinValidation, vinValidationLabel, exportRows,
   type RecallSource, type VinRecallResult,
 } from "@/lib/recalls";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { useCurrentDealer } from "@/hooks/useDealerData";
+import { saveRecallReport } from "@/lib/recallReports";
 
 type Step = "upload" | "configure" | "running" | "results";
 type Row = Record<string, unknown>;
@@ -53,7 +58,9 @@ function guessVinColumn(headers: string[]): string {
   );
 }
 
-export default function BulkVinRecallChecker() {
+export default function BulkVinRecallChecker({ onSaved }: { onSaved?: () => void } = {}) {
+  const { toast } = useToast();
+  const { data: membership } = useCurrentDealer();
   const [step, setStep] = useState<Step>("upload");
   const [fileName, setFileName] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
@@ -69,10 +76,19 @@ export default function BulkVinRecallChecker() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Expandable per-VIN detail + save-report flow.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [reportName, setReportName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const toggleExpand = (vin: string) =>
+    setExpanded((prev) => { const n = new Set(prev); n.has(vin) ? n.delete(vin) : n.add(vin); return n; });
+
   const reset = useCallback(() => {
     setStep("upload"); setFileName(""); setHeaders([]); setRows([]);
     setVinColumn(""); setKeepCols(new Set()); setParseError("");
     setResultsByVin(new Map()); setProgress({ done: 0, total: 0 });
+    setExpanded(new Set());
   }, []);
 
   const onFile = useCallback(async (file: File) => {
@@ -199,6 +215,46 @@ export default function BulkVinRecallChecker() {
   }, [rows, headers, keepCols, vinColumn]);
 
   const stamp = new Date().toISOString().slice(0, 10);
+
+  // Build + persist a saved report (preserves file, columns, results, invalid).
+  const handleSaveReport = useCallback(async () => {
+    setSaving(true);
+    try {
+      const summaryRows = buildSummary();
+      const detailedRows = buildDetailed();
+      const invalidRows = buildInvalid();
+      const results = [...resultsByVin.values()];
+      const openRecallCount = results.reduce((n, r) => n + (r.recallCount || 0), 0);
+      const { persistence } = await saveRecallReport({
+        name: reportName.trim() || `Bulk Recall Check - ${stamp}`,
+        created_by: membership?.user_id ?? null,
+        dealer_id: membership?.dealer_id ?? null,
+        file_name: fileName,
+        vin_count: results.length,
+        open_recall_count: openRecallCount,
+        kept_columns: headers.filter((h) => keepCols.has(h)),
+        summary: {
+          checked: results.length,
+          withRecalls: results.filter((r) => r.recallCount > 0).length,
+          totalRecalls: openRecallCount,
+          failed: results.filter((r) => r.lookupError).length,
+          invalid: invalidRows.length,
+        },
+        results,
+        summary_rows: summaryRows,
+        detailed_rows: detailedRows,
+        invalid_rows: invalidRows,
+      }, membership?.dealer_id);
+      setSaveOpen(false);
+      toast({
+        title: "Report saved",
+        description: persistence === "local" ? "Saved on this device — MC report endpoint pending." : undefined,
+      });
+      onSaved?.();
+    } catch {
+      toast({ title: "Couldn't save report", variant: "destructive" });
+    } finally { setSaving(false); }
+  }, [reportName, stamp, membership, fileName, headers, keepCols, resultsByVin, buildSummary, buildDetailed, buildInvalid, onSaved, toast]);
 
   // ── Results summary numbers ──
   const resultStats = useMemo(() => {
@@ -378,6 +434,7 @@ export default function BulkVinRecallChecker() {
             <table className="w-full text-xs">
               <thead className="sticky top-0">
                 <tr className="bg-muted border-b border-border text-left font-mono uppercase tracking-wider text-muted-foreground">
+                  <th className="py-2 px-2 w-8"></th>
                   <th className="py-2 px-3">VIN</th>
                   <th className="py-2 px-3">Year/Make/Model</th>
                   <th className="py-2 px-3 text-center">Recalls</th>
@@ -386,32 +443,70 @@ export default function BulkVinRecallChecker() {
                 </tr>
               </thead>
               <tbody>
-                {[...resultsByVin.values()].map((res) => (
-                  <tr key={res.vin} className="border-b border-border/40">
-                    <td className="py-1.5 px-3 font-mono">{res.vin}</td>
-                    <td className="py-1.5 px-3 text-muted-foreground">{[res.decodedYear, res.decodedMake, res.decodedModel].filter(Boolean).join(" ") || "—"}</td>
-                    <td className="py-1.5 px-3 text-center font-mono">
-                      {res.lookupError ? "—" : (
-                        <span className={cn("font-bold", res.recallCount > 0 ? "text-red-600" : "text-emerald-600")}>{res.recallCount}</span>
+                {[...resultsByVin.values()].map((res) => {
+                  const isOpen = expanded.has(res.vin);
+                  const hasDetail = res.recalls.length > 0;
+                  return (
+                    <Fragment key={res.vin}>
+                      <tr
+                        className={cn("border-b border-border/40", hasDetail && "cursor-pointer hover:bg-muted/40")}
+                        onClick={() => hasDetail && toggleExpand(res.vin)}
+                      >
+                        <td className="py-1.5 px-2 text-center text-muted-foreground">
+                          {hasDetail && <ChevronDown className={cn("h-3.5 w-3.5 transition-transform inline", isOpen && "rotate-180")} />}
+                        </td>
+                        <td className="py-1.5 px-3 font-mono">{res.vin}</td>
+                        <td className="py-1.5 px-3 text-muted-foreground">{[res.decodedYear, res.decodedMake, res.decodedModel].filter(Boolean).join(" ") || "—"}</td>
+                        <td className="py-1.5 px-3 text-center font-mono">
+                          {res.lookupError ? "—" : (
+                            <span className={cn("font-bold", res.recallCount > 0 ? "text-red-600" : "text-emerald-600")}>{res.recallCount}</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-3 text-muted-foreground truncate max-w-[260px]">{res.recalls[0]?.component ?? (res.lookupError ? "—" : "No open recalls")}</td>
+                        <td className="py-1.5 px-3">
+                          {res.lookupError
+                            ? <span className="text-amber-600 inline-flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Failed</span>
+                            : res.recallCount > 0
+                              ? <span className="text-red-600">Open</span>
+                              : <span className="text-emerald-600 inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Clear</span>}
+                        </td>
+                      </tr>
+                      {isOpen && hasDetail && (
+                        <tr key={`${res.vin}-detail`} className="border-b border-border/40 bg-muted/20">
+                          <td />
+                          <td colSpan={5} className="py-3 px-3">
+                            <div className="space-y-2">
+                              {res.recalls.map((rc, i) => (
+                                <div key={i} className="border border-border rounded-none p-3 space-y-1.5 bg-background">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-mono text-xs font-bold">{rc.campaignNumber || "—"}</span>
+                                    {rc.recallDate && <span className="text-[11px] text-muted-foreground">· {rc.recallDate}</span>}
+                                    {rc.status && <Badge variant="outline" className="rounded-none text-[10px]">{rc.status}</Badge>}
+                                    {rc.source && <span className="text-[10px] text-muted-foreground ml-auto">{rc.source}</span>}
+                                  </div>
+                                  <p className="text-xs font-semibold">{rc.component || "—"}</p>
+                                  {rc.summary && <Detail label="Summary" text={rc.summary} />}
+                                  {rc.consequence && <Detail label="Consequence" text={rc.consequence} />}
+                                  {rc.remedy && <Detail label="Remedy" text={rc.remedy} />}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                    <td className="py-1.5 px-3 text-muted-foreground truncate max-w-[260px]">{res.recalls[0]?.component ?? (res.lookupError ? "—" : "No open recalls")}</td>
-                    <td className="py-1.5 px-3">
-                      {res.lookupError
-                        ? <span className="text-amber-600 inline-flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Failed</span>
-                        : res.recallCount > 0
-                          ? <span className="text-red-600">Open</span>
-                          : <span className="text-emerald-600 inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Clear</span>}
-                    </td>
-                  </tr>
-                ))}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {/* Exports */}
+          {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mr-1">Export</span>
+            <Button size="sm" className="gap-1.5" onClick={() => { setReportName(`Bulk Recall Check - ${stamp}`); setSaveOpen(true); }}>
+              <Save className="h-3.5 w-3.5" /> Save Report
+            </Button>
+            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mx-1">Export</span>
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => exportRows(buildSummary(), `recall-summary-${stamp}`, "xlsx")}>
               <Download className="h-3.5 w-3.5" /> Summary (XLSX)
             </Button>
@@ -426,10 +521,45 @@ export default function BulkVinRecallChecker() {
                 <Download className="h-3.5 w-3.5" /> Invalid VINs (CSV)
               </Button>
             )}
+            <Button size="sm" variant="ghost" className="gap-1.5 ml-auto" onClick={reset}>
+              <RotateCcw className="h-3.5 w-3.5" /> Start Over
+            </Button>
           </div>
         </div>
       )}
+
+      {/* Save report dialog */}
+      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save recall report</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Report name</label>
+            <Input value={reportName} onChange={(e) => setReportName(e.target.value)} placeholder={`Bulk Recall Check - ${stamp}`} />
+            <p className="text-[11px] text-muted-foreground">
+              Saves the checked VINs, recall results, kept columns, invalid VINs, and summary counts.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setSaveOpen(false)} disabled={saving}>Cancel</Button>
+            <Button size="sm" onClick={handleSaveReport} disabled={saving} className="gap-1.5">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {saving ? "Saving…" : "Save Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
+  );
+}
+
+function Detail({ label, text }: { label: string; text: string }) {
+  return (
+    <p className="text-[11px] leading-relaxed">
+      <span className="font-mono uppercase tracking-wider text-muted-foreground">{label}: </span>
+      <span className="text-foreground">{text}</span>
+    </p>
   );
 }
 

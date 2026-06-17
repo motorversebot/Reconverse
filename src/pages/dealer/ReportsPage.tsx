@@ -6,6 +6,8 @@ import { Download } from "lucide-react";
 import { subDays, startOfQuarter, startOfYear } from "date-fns";
 import { useReportsData, downloadCSV, type DateRange } from "@/hooks/useReportsData";
 import BulkVinRecallChecker from "@/components/dealer/BulkVinRecallChecker";
+import CarfaxLinksReport from "@/components/dealer/CarfaxLinksReport";
+import SavedRecallReports from "@/components/dealer/SavedRecallReports";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid,
 } from "recharts";
@@ -41,6 +43,7 @@ type ProductivityRow = { name: string; mpi: number; repairs: number; estimates: 
 
 export default function ReportsPage() {
   const [range, setRange] = useState<DateRange>({ from: subDays(new Date(), 30), to: new Date() });
+  const [savedReportsKey, setSavedReportsKey] = useState(0);
   const { data, isLoading } = useReportsData(range);
 
   const setPreset = (p: typeof PRESETS[number]) => {
@@ -88,6 +91,7 @@ export default function ReportsPage() {
           <TabsTrigger value="financial">Financial</TabsTrigger>
           <TabsTrigger value="productivity">Productivity</TabsTrigger>
           <TabsTrigger value="bulk-vin-recall">Bulk VIN Recall Checker</TabsTrigger>
+          <TabsTrigger value="carfax-links">CARFAX Links</TabsTrigger>
         </TabsList>
 
         {isLoading && (
@@ -233,8 +237,13 @@ export default function ReportsPage() {
         </TabsContent>
 
         {/* ── Bulk VIN Recall Checker ── */}
-        <TabsContent value="bulk-vin-recall">
-          <BulkVinRecallChecker />
+        <TabsContent value="bulk-vin-recall" className="space-y-6">
+          <BulkVinRecallChecker onSaved={() => setSavedReportsKey((k) => k + 1)} />
+          <SavedRecallReports reloadKey={savedReportsKey} />
+        </TabsContent>
+
+        <TabsContent value="carfax-links">
+          <CarfaxLinksReport />
         </TabsContent>
       </Tabs>
     </div>
