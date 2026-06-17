@@ -90,10 +90,8 @@ export default function PipelineStagePage() {
         <div className="grid gap-3">
           {filtered.map((unit: any) => {
             const title = [unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "Untitled";
+            const p = promiseInfo(unit.promise_date);
             return (
-              {(() => {
-              const p = promiseInfo(unit.promise_date);
-              return (
               <Card
                 key={unit.id}
                 className="glass-panel border-border p-4 flex items-start gap-4 cursor-pointer hover:border-primary/30 transition-colors"
@@ -119,8 +117,6 @@ export default function PipelineStagePage() {
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </Card>
-              );
-              })()}
             );
           })}
         </div>
