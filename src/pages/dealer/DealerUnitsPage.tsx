@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import { decodeVinNhtsa } from "@/lib/vinDecode";
-import { canGenerateCarfax, getCarfaxConfig, attachCarfaxLink, generateCarfaxLink } from "@/lib/carfax";
 import { isStaffOnly, canEditUnits, canArchiveUnits } from "@/lib/permissions";
 import StaffUnitDrawer from "@/components/dealer/StaffUnitDrawer";
 import VinScanner from "@/components/dealer/VinScanner";
@@ -39,7 +38,6 @@ interface UnitForm {
   body: string;
   drive_type: string;
   transmission: string;
-  carfax_url: string;
 }
 
 interface DecodedData {
@@ -56,7 +54,7 @@ interface DecodedData {
 const emptyForm: UnitForm = {
   vin: "", stock_number: "", make: "", model: "", year: "",
   color: "", notes: "", status: "inspection", trim: "", engine: "",
-  body: "", drive_type: "", transmission: "", carfax_url: "",
+  body: "", drive_type: "", transmission: "",
 };
 
 export default function DealerUnitsPage() {
@@ -321,12 +319,6 @@ export default function DealerUnitsPage() {
         setModalOpen(false);
       } else {
         const newUnit = await createUnit.mutateAsync({ dealer_id: dealerId, ...payload });
-        // CARFAX (Phase 1, client-side): attach a pasted link, else auto-generate
-        // from the dealer's Link template if configured + VIN is valid.
-        if (form.vin) {
-          if (form.carfax_url.trim()) attachCarfaxLink(dealerId, form.vin, form.carfax_url.trim());
-          else if (canGenerateCarfax({ vin: form.vin }, dealerId)) generateCarfaxLink(dealerId, form.vin);
-        }
         toast({ title: "Unit created" });
         setModalOpen(false);
         navigate(`/dealer/units/${newUnit.id}`);
@@ -620,24 +612,6 @@ export default function DealerUnitsPage() {
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Notes</label>
               <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" />
-            </div>
-
-            {/* CARFAX (Phase 1) */}
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">CARFAX Report URL (optional)</label>
-              <Input
-                value={form.carfax_url}
-                onChange={(e) => setForm({ ...form, carfax_url: e.target.value })}
-                placeholder="Paste a CARFAX link, or leave blank"
-                className="text-xs"
-              />
-              {(() => {
-                const cfg = getCarfaxConfig(dealerId);
-                if (form.carfax_url.trim()) return <p className="text-[11px] text-primary">CARFAX link will be attached.</p>;
-                if (canGenerateCarfax({ vin: form.vin }, dealerId)) return <p className="text-[11px] text-primary">A CARFAX link will be auto-generated from your dealer template.</p>;
-                if (!cfg.enabled || !cfg.linkTemplate) return <p className="text-[11px] text-muted-foreground">CARFAX not set up — configure your Link template in Settings (optional).</p>;
-                return <p className="text-[11px] text-muted-foreground">Enter a valid 17-char VIN to auto-generate a CARFAX link.</p>;
-              })()}
             </div>
 
             {/* Decoded Details expandable */}
