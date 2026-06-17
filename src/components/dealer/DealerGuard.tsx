@@ -41,6 +41,23 @@ export function DealerGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+
+  // Reconverse access granted in Identity, but not assigned to any dealer yet.
+  // Block dealer screens with a clear message instead of a redirect loop.
+  if (membership?.needs_dealer_assignment && !membership.is_platform_admin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-3">
+          <h1 className="text-lg font-semibold text-foreground">No dealership assigned yet</h1>
+          <p className="text-sm text-muted-foreground">
+            Your account has Reconverse access, but you haven't been added to a dealership.
+            Ask your administrator to assign you to a dealer in Mission Control, then sign in again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!membership) return <Navigate to="/" replace />;
 
   // Staff cannot access unit detail or recon lane pages

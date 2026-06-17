@@ -58,6 +58,24 @@ export function setTokens(access: string | null, refresh: string | null) {
   writeToken(REFRESH_KEY, refresh);
 }
 
+// --- Active dealer context (multi-dealer) --------------------------------
+// Which dealer membership is active for this session. Sent as X-Dealer-Id so
+// MC resolves the right membership when a user belongs to multiple dealers.
+const ACTIVE_DEALER_KEY = 'rv_active_dealer';
+
+export function getActiveDealerId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return window.localStorage.getItem(ACTIVE_DEALER_KEY); } catch { return null; }
+}
+
+export function setActiveDealerId(dealerId: string | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (dealerId) window.localStorage.setItem(ACTIVE_DEALER_KEY, dealerId);
+    else window.localStorage.removeItem(ACTIVE_DEALER_KEY);
+  } catch { /* ignore */ }
+}
+
 export function getRememberPreference(): boolean {
   if (typeof window === 'undefined') return true;
   try {
@@ -113,6 +131,8 @@ export async function apiFetch(input: string, init: RequestInit = {}): Promise<R
   function withAuth(tok: string | null): RequestInit {
     const headers = new Headers(init.headers || {});
     if (tok) headers.set('Authorization', `Bearer ${tok}`);
+    const activeDealer = getActiveDealerId();
+    if (activeDealer && !headers.has('X-Dealer-Id')) headers.set('X-Dealer-Id', activeDealer);
     return { ...init, headers };
   }
 

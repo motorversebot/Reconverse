@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch, getMe } from "@/lib/api";
+import { apiFetch, getMe, getActiveDealerId, setActiveDealerId } from "@/lib/api";
 
 /**
  * Current dealer membership for the signed-in user.
@@ -43,6 +43,13 @@ function normalizeDealerRole(raw?: string | null): string {
   }
 }
 
+export interface DealerMembership {
+  dealer_id: string;
+  dealer_name: string;
+  role: string;
+  is_active: boolean;
+}
+
 export interface CurrentDealer {
   dealer_id: string;
   dealer_name: string;
@@ -51,6 +58,9 @@ export interface CurrentDealer {
   user_id?: string;      // reconverse user id (for self-checks)
   is_platform_admin?: boolean;
   tier?: string;
+  memberships?: DealerMembership[];     // all dealers this user belongs to
+  active_dealer_id?: string | null;
+  needs_dealer_assignment?: boolean;    // has Reconverse access but no dealer
 }
 
 export function useCurrentDealer() {
@@ -66,14 +76,35 @@ export function useCurrentDealer() {
         const j = await res.json().catch(() => null);
         if (res.ok && j?.ok && j.data) {
           const m = j.data;
+          const memberships: DealerMembership[] = Array.isArray(m.memberships)
+            ? m.memberships.map((x: any) => ({
+                dealer_id: String(x.dealer_id),
+                dealer_name: x.dealer_name ?? "",
+                role: x.role ?? "",
+                is_active: !!x.is_active,
+              }))
+            : [];
+          // Persist the active dealer so apiFetch sends X-Dealer-Id. Honor a
+          // previously chosen dealer if it's still a valid membership.
+          const stored = getActiveDealerId();
+          const validStored = stored && memberships.some((mm) => mm.dealer_id === stored) ? stored : null;
+          const resolvedActive = validStored
+            ?? (m.active_dealer_id != null ? String(m.active_dealer_id) : null)
+            ?? (m.dealer?.id != null ? String(m.dealer.id) : null)
+            ?? (memberships[0]?.dealer_id ?? null);
+          if (resolvedActive) setActiveDealerId(resolvedActive);
+          const activeMembership = memberships.find((mm) => mm.dealer_id === resolvedActive);
           return {
-            dealer_id: String(m.dealer?.id ?? "1"),
-            dealer_name: m.dealer?.name ?? "",
-            role: m.dealer_role ?? normalizeDealerRole(m.role),
+            dealer_id: resolvedActive ?? String(m.dealer?.id ?? "1"),
+            dealer_name: activeMembership?.dealer_name ?? m.dealer?.name ?? "",
+            role: activeMembership?.role ?? m.dealer_role ?? normalizeDealerRole(m.role),
             is_active: true,
             user_id: m.reconverse_user_id != null ? String(m.reconverse_user_id) : undefined,
             is_platform_admin: !!m.is_platform_admin,
             tier: m.tier,
+            memberships,
+            active_dealer_id: resolvedActive,
+            needs_dealer_assignment: !!m.needs_dealer_assignment,
           };
         }
       } catch {

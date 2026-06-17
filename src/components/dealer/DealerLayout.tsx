@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentDealer } from "@/hooks/useDealerData";
+import { setActiveDealerId } from "@/lib/api";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { canManageUsers, canAccessReconLane } from "@/lib/permissions";
 import {
@@ -85,7 +87,16 @@ function SidebarContent({
 }) {
   const { signOut, user, isPlatformAdmin } = useAuth();
   const { data: membership } = useCurrentDealer();
+  const qc = useQueryClient();
   const role = membership?.role as string | undefined;
+  const memberships = membership?.memberships ?? [];
+
+  const switchDealer = (dealerId: string) => {
+    if (!dealerId || dealerId === membership?.dealer_id) return;
+    setActiveDealerId(dealerId);
+    // Re-pull membership + all dealer-scoped data for the new context.
+    qc.invalidateQueries();
+  };
 
   const showReconLane = canAccessReconLane(role);
   const showAdmin = canManageUsers(role);
@@ -118,11 +129,26 @@ function SidebarContent({
           )}
         </Link>
         {!collapsed && (
-          <div className="mt-3.5 px-3 py-1 bg-card border border-border rounded-none max-w-[190px] w-full text-center">
-            <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider truncate">
-              {membership?.dealer_name?.trim() || "Dealer Portal"}
-            </p>
-          </div>
+          memberships.length > 1 ? (
+            <select
+              value={membership?.dealer_id ?? ""}
+              onChange={(e) => switchDealer(e.target.value)}
+              className="mt-3.5 px-3 py-1 bg-card border border-border rounded-none max-w-[190px] w-full text-center text-[9px] font-mono text-muted-foreground uppercase tracking-wider cursor-pointer focus:outline-none focus:ring-1 focus:ring-foreground"
+              title="Switch dealership"
+            >
+              {memberships.map((m) => (
+                <option key={m.dealer_id} value={m.dealer_id}>
+                  {m.dealer_name || `Dealer ${m.dealer_id}`}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="mt-3.5 px-3 py-1 bg-card border border-border rounded-none max-w-[190px] w-full text-center">
+              <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider truncate">
+                {membership?.dealer_name?.trim() || "Dealer Portal"}
+              </p>
+            </div>
+          )
         )}
       </div>
 
