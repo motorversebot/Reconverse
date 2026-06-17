@@ -244,8 +244,8 @@ export default function UnitDetailPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-foreground truncate">{title}</h1>
           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-            {unit.stock_number && <span>#{unit.stock_number}</span>}
             {unit.vin && <span className="font-mono text-xs">{unit.vin}</span>}
+            <span className="text-xs">Stock #{unit.stock_number?.trim() || "—"}</span>
             <Badge variant="outline" className="text-xs">{stageMeta?.label ?? unit.status}</Badge>
           </div>
         </div>
