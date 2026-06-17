@@ -270,10 +270,10 @@ export function DealerLayout() {
               <SidebarContent collapsed={false} showCollapseBtn={false} />
             </SheetContent>
           </Sheet>
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-accent grid place-items-center text-foreground font-black text-xs shadow-[0_0_12px_hsl(var(--primary)/0.25)]">
+          <div className="h-7 w-7 rounded-none border border-foreground bg-foreground grid place-items-center text-background font-mono font-bold text-xs">
             R
           </div>
-          <span className="font-extrabold text-sm text-foreground flex-1 tracking-tight">Reconverse</span>
+          <span className="font-mono font-bold text-sm text-foreground flex-1 tracking-widest uppercase">Reconverse</span>
           <NotificationBell />
         </header>
         <main className="flex-1 overflow-auto">
