@@ -47,14 +47,23 @@ export default function VinScanner({
   const fileRef = useRef<HTMLInputElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const doneRef = useRef(false);
+
+  const stopStream = () => {
+    try { controlsRef.current?.stop(); } catch { /* noop */ }
+    controlsRef.current = null;
+    try { streamRef.current?.getTracks().forEach((t) => t.stop()); } catch { /* noop */ }
+    streamRef.current = null;
+    if (videoRef.current) { try { videoRef.current.srcObject = null; } catch { /* noop */ } }
+  };
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const finish = (vin: string) => {
     if (doneRef.current) return;
     doneRef.current = true;
-    try { controlsRef.current?.stop(); } catch { /* noop */ }
+    stopStream();
     onDetected(vin);
     onOpenChange(false);
   };
@@ -74,26 +83,34 @@ export default function VinScanner({
     };
 
     (async () => {
+      // Wait for the dialog's <video> to actually mount before starting.
+      for (let i = 0; i < 30 && !videoRef.current; i++) {
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
+      }
+      const video = videoRef.current;
+      if (!video || cancelled) return;
+
+      // Acquire the REAR camera ourselves and bind it to OUR element, then play
+      // it, then decode from that element. (Letting ZXing acquire the stream can
+      // bind it to an internal element → black preview on mobile.)
       try {
-        let controls: IScannerControls;
-        // Prefer the REAR camera. On phones, the default device is usually the
-        // front/selfie cam, which can't see the VIN — force facingMode first.
+        let stream: MediaStream;
         try {
-          controls = await reader.decodeFromConstraints(
-            { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
-            videoRef.current!,
-            onResult,
-          );
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false,
+          });
         } catch {
-          // Fallback: explicitly pick a back-facing device by label.
-          let deviceId: string | undefined;
-          try {
-            const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-            const back = devices.find((d) => /back|rear|environment/i.test(d.label));
-            deviceId = (back ?? devices[devices.length - 1])?.deviceId;
-          } catch { /* no enumerate */ }
-          controls = await reader.decodeFromVideoDevice(deviceId, videoRef.current!, onResult);
+          // Some devices reject the ideal facingMode; retry with any camera.
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         }
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        video.srcObject = stream;
+        video.setAttribute("playsinline", "true");
+        await video.play().catch(() => { /* play may need the muted attr (set) */ });
+
+        const controls = await reader.decodeFromVideoElement(video, onResult);
         if (cancelled) controls.stop();
         else controlsRef.current = controls;
       } catch {
@@ -101,11 +118,7 @@ export default function VinScanner({
       }
     })();
 
-    return () => {
-      cancelled = true;
-      try { controlsRef.current?.stop(); } catch { /* noop */ }
-      controlsRef.current = null;
-    };
+    return () => { cancelled = true; stopStream(); };
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onPhoto = async (file: File) => {
