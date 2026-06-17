@@ -36,7 +36,7 @@ import ActivityTab, { useActivityCount } from "@/components/dealer/activity/Acti
 import CarfaxCard from "@/components/dealer/CarfaxCard";
 import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
 import EstimateItemsTable from "@/components/dealer/EstimateItemsTable";
-import ApprovalView from "@/components/dealer/estimate/ApprovalView";
+import ApprovalReview from "@/components/dealer/ApprovalReview";
 import RepairView from "@/components/dealer/estimate/RepairView";
 import {
   STAGE_META, STAGE_DEFAULT_TAB, STATUS_TO_SLUG,
@@ -375,11 +375,12 @@ export default function UnitDetailPage() {
 
         {/* Approval Tab */}
         <TabsContent value="approval" className="mt-4">
-          <ApprovalView
+          <ApprovalReview
             unitId={unit.id}
             dealerId={dealerId}
             unit={unit}
-            onStageAdvance={handleStageAdvance}
+            role={role}
+            onMoved={handleStageAdvance}
           />
         </TabsContent>
 
