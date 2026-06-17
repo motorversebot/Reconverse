@@ -85,6 +85,13 @@ function treadTextColor(v: number | null | undefined): string {
   return "text-emerald-500";
 }
 
+// Subtle tinted highlight for each dropdown option row (no dots/icons).
+function treadOptionClasses(v: number): string {
+  if (v <= 3) return "bg-destructive/10 text-destructive focus:bg-destructive/20 data-[highlighted]:bg-destructive/20 data-[highlighted]:text-destructive";
+  if (v <= 5) return "bg-amber-500/10 text-amber-600 focus:bg-amber-500/20 data-[highlighted]:bg-amber-500/20 data-[highlighted]:text-amber-600";
+  return "bg-emerald-500/10 text-emerald-600 focus:bg-emerald-500/20 data-[highlighted]:bg-emerald-500/20 data-[highlighted]:text-emerald-600";
+}
+
 interface Props {
   unitId: string;
   dealerId: string;
@@ -286,7 +293,9 @@ export default function TireWheelInspection({ unitId, dealerId, readOnly = false
                             <SelectContent>
                               <SelectItem value="none">—</SelectItem>
                               {TREAD_OPTIONS.map(o => (
-                                <SelectItem key={o} value={String(o)}>{treadLabel(o)}</SelectItem>
+                                <SelectItem key={o} value={String(o)} className={`my-0.5 font-medium ${treadOptionClasses(o)}`}>
+                                  {treadLabel(o)}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
