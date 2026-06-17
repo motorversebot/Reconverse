@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Image as ImageIcon, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Loader2, Flashlight, FlashlightOff } from "lucide-react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { DecodeHintType, BarcodeFormat } from "@zxing/library";
 
@@ -50,15 +50,34 @@ export default function VinScanner({
   const streamRef = useRef<MediaStream | null>(null);
   const doneRef = useRef(false);
 
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+
   const stopStream = () => {
     try { controlsRef.current?.stop(); } catch { /* noop */ }
     controlsRef.current = null;
     try { streamRef.current?.getTracks().forEach((t) => t.stop()); } catch { /* noop */ }
     streamRef.current = null;
     if (videoRef.current) { try { videoRef.current.srcObject = null; } catch { /* noop */ } }
+    setTorchSupported(false);
+    setTorchOn(false);
   };
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+
+  // Toggle the camera flash/torch (only on devices/cameras that expose it —
+  // Android Chrome supports it; iOS Safari generally doesn't).
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks?.()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next }] } as any);
+      setTorchOn(next);
+    } catch {
+      setTorchSupported(false);
+    }
+  };
 
   const finish = (vin: string) => {
     if (doneRef.current) return;
@@ -106,6 +125,12 @@ export default function VinScanner({
         }
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
+        // Detect torch/flash capability on the live track.
+        try {
+          const track = stream.getVideoTracks()[0];
+          const caps = (track?.getCapabilities?.() ?? {}) as any;
+          if (caps && "torch" in caps && caps.torch) setTorchSupported(true);
+        } catch { /* capabilities unsupported */ }
         video.srcObject = stream;
         video.setAttribute("playsinline", "true");
         await video.play().catch(() => { /* play may need the muted attr (set) */ });
@@ -149,6 +174,19 @@ export default function VinScanner({
           <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
             <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
             <div className="pointer-events-none absolute inset-x-6 top-1/2 -translate-y-1/2 h-16 rounded border-2 border-white/70" />
+            {torchSupported && (
+              <button
+                type="button"
+                onClick={toggleTorch}
+                aria-pressed={torchOn}
+                aria-label={torchOn ? "Turn flash off" : "Turn flash on"}
+                className={`absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full backdrop-blur transition-colors ${
+                  torchOn ? "bg-white text-black" : "bg-black/50 text-white hover:bg-black/70"
+                }`}
+              >
+                {torchOn ? <Flashlight className="h-5 w-5" /> : <FlashlightOff className="h-5 w-5" />}
+              </button>
+            )}
           </div>
           <p className="text-center text-xs text-muted-foreground">
             Point the camera at the VIN barcode (windshield or driver door jamb).
