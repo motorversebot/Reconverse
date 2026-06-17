@@ -119,7 +119,7 @@ function SidebarContent({
         {!collapsed && (
           <div className="mt-3.5 px-3 py-1 bg-card border border-border rounded-none max-w-[190px] w-full text-center">
             <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider truncate">
-              {membership?.dealers?.name ?? "Dealer Portal"}
+              {membership?.dealer_name?.trim() || "Dealer Portal"}
             </p>
           </div>
         )}
