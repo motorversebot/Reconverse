@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Camera, ArrowRight, RefreshCw, AlertTriangle, ClipboardList } from "lucide-react";
+import { Loader2, Camera, ArrowRight, RefreshCw, AlertTriangle, ClipboardList, ChevronRight } from "lucide-react";
 import { canEditUnits } from "@/lib/permissions";
 import {
   listEstimateItems, generateFromMpi, updateEstimateItem, moveToApproval,
@@ -19,7 +20,17 @@ interface Props {
   onMoved?: () => void;
 }
 
-const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;
+const money = (n: unknown) => `$${(Number(n) || 0).toFixed(2)}`;
+
+const STATUS_BADGE: Record<string, string> = {
+  needs_pricing: "text-amber-600 border-amber-500/40 bg-amber-500/10",
+  priced: "text-primary border-primary/40 bg-primary/10",
+  approved: "text-green-600 border-green-500/40 bg-green-500/10",
+  no_charge: "text-muted-foreground border-border bg-muted/40",
+  deferred: "text-muted-foreground border-border bg-muted/40",
+  declined: "text-red-500 border-red-500/40 bg-red-500/10",
+};
+const statusLabel = (s: string) => ESTIMATE_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
 
 export default function EstimateItemsTable({ unitId, role, readOnly = false, onMoved }: Props) {
   const { toast } = useToast();
@@ -31,6 +42,7 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [sending, setSending] = useState(false);
+  const [openId, setOpenId] = useState<number | null>(null);
 
   const load = useCallback(async (autoGen = false) => {
     setLoading(true);
@@ -51,9 +63,10 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
     if (res) {
       setItems((prev) => prev.map((i) => (i.id === item.id ? res.item : i)));
       setSummary(res.summary);
-    } else {
-      toast({ title: "Couldn't save", variant: "destructive" });
+      return res.item;
     }
+    toast({ title: "Couldn't save", variant: "destructive" });
+    return null;
   }, [unitId, toast]);
 
   const regenerate = async () => {
@@ -74,13 +87,10 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
   if (loading) {
     return <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading estimate…</div>;
   }
-
   if (!available) {
     return (
       <Card className="glass-panel border-border">
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Estimate workflow is being set up. Check back shortly.
-        </CardContent>
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">Estimate workflow is being set up. Check back shortly.</CardContent>
       </Card>
     );
   }
@@ -100,6 +110,8 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
     );
   }
 
+  const openItem = items.find((i) => i.id === openId) || null;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -107,10 +119,42 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
         {canEdit && <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground" onClick={regenerate} disabled={busy}><RefreshCw className="h-3.5 w-3.5" /> Sync from MPI</Button>}
       </div>
 
-      {items.map((it) => (
-        <EstimateRow key={it.id} item={it} canEdit={canEdit} onPatch={patch} />
-      ))}
+      {/* Compact single-line rows — click to open detail */}
+      <Card className="glass-panel border-border overflow-hidden">
+        <ul className="divide-y divide-border/50">
+          {items.map((it) => {
+            const laborCost = it.labor_hours * it.labor_rate;
+            return (
+              <li key={it.id}>
+                <button
+                  type="button"
+                  onClick={() => setOpenId(it.id)}
+                  className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground truncate">{it.concern}</span>
+                      {it.photo_count > 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground"><Camera className="h-3 w-3" />{it.photo_count}</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      Labor {money(laborCost)} · Parts {money(it.parts_cost)}
+                    </p>
+                  </div>
+                  <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border shrink-0 ${STATUS_BADGE[it.status] || STATUS_BADGE.needs_pricing}`}>
+                    {statusLabel(it.status)}
+                  </span>
+                  <span className="text-sm font-bold text-foreground tabular-nums shrink-0 w-20 text-right">{money(it.line_total)}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
 
+      {/* Summary */}
       {summary && (
         <Card className="glass-panel border-border">
           <CardContent className="py-3 px-4 grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
@@ -123,6 +167,7 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
         </Card>
       )}
 
+      {/* Send to Approval (gated) */}
       {canEdit && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-1">
           {pending > 0 && (
@@ -135,6 +180,14 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
           </Button>
         </div>
       )}
+
+      {/* Detail modal */}
+      <EstimateItemDialog
+        item={openItem}
+        canEdit={canEdit}
+        onClose={() => setOpenId(null)}
+        onPatch={patch}
+      />
     </div>
   );
 }
@@ -148,86 +201,116 @@ function Stat({ label, value, strong, warn }: { label: string; value: string; st
   );
 }
 
-function EstimateRow({ item, canEdit, onPatch }: {
-  item: EstimateItem; canEdit: boolean;
-  onPatch: (item: EstimateItem, fields: Partial<EstimateItem>) => void;
+function EstimateItemDialog({ item, canEdit, onClose, onPatch }: {
+  item: EstimateItem | null;
+  canEdit: boolean;
+  onClose: () => void;
+  onPatch: (item: EstimateItem, fields: Partial<EstimateItem>) => Promise<EstimateItem | null>;
 }) {
-  const [notes, setNotes] = useState(item.notes ?? "");
-  const [hours, setHours] = useState(String(item.labor_hours ?? 0));
-  const [rate, setRate] = useState(String(item.labor_rate ?? 0));
-  const [partsDesc, setPartsDesc] = useState(item.parts_description ?? "");
-  const [partsCost, setPartsCost] = useState(String(item.parts_cost ?? 0));
+  const { toast } = useToast();
+  const [notes, setNotes] = useState("");
+  const [hours, setHours] = useState("0");
+  const [rate, setRate] = useState("0");
+  const [partsDesc, setPartsDesc] = useState("");
+  const [partsCost, setPartsCost] = useState("0");
+  const [status, setStatus] = useState<EstimateItemStatus>("needs_pricing");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setNotes(item.notes ?? ""); setHours(String(item.labor_hours ?? 0));
-    setRate(String(item.labor_rate ?? 0)); setPartsDesc(item.parts_description ?? "");
+    if (!item) return;
+    setNotes(item.notes ?? "");
+    setHours(String(item.labor_hours ?? 0));
+    setRate(String(item.labor_rate ?? 0));
+    setPartsDesc(item.parts_description ?? "");
     setPartsCost(String(item.parts_cost ?? 0));
-  }, [item.id, item.labor_hours, item.labor_rate, item.parts_cost, item.parts_description, item.notes]);
+    setStatus(item.status);
+  }, [item?.id]);
 
+  if (!item) return null;
   const laborCost = (Number(hours) || 0) * (Number(rate) || 0);
+  const lineTotal = laborCost + (Number(partsCost) || 0);
 
-  const commit = () => onPatch(item, {
-    notes: notes || null, labor_hours: Number(hours) || 0, labor_rate: Number(rate) || 0,
-    parts_description: partsDesc || null, parts_cost: Number(partsCost) || 0,
-  });
+  const save = async () => {
+    setSaving(true);
+    const updated = await onPatch(item, {
+      notes: notes || null, labor_hours: Number(hours) || 0, labor_rate: Number(rate) || 0,
+      parts_description: partsDesc || null, parts_cost: Number(partsCost) || 0, status,
+    });
+    setSaving(false);
+    if (updated) { toast({ title: "Saved" }); onClose(); }
+  };
 
   return (
-    <Card className="glass-panel border-border">
-      <CardContent className="p-3 space-y-2.5">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">{item.concern}</p>
-            {item.mpi_category && <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{item.mpi_category}</p>}
+    <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[88vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-base">{item.concern}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {item.mpi_category && (
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{item.mpi_category} · from MPI</p>
+          )}
+
+          {/* Photos */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1">Photos</p>
+            {item.photo_count > 0 ? (
+              <div className="flex gap-2 flex-wrap">
+                {Array.from({ length: item.photo_count }).map((_, i) => (
+                  <div key={i} className="h-16 w-16 rounded-md border border-border bg-muted/40 flex items-center justify-center text-muted-foreground"><Camera className="h-5 w-5" /></div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Camera className="h-3.5 w-3.5" /> No photos attached.</p>
+            )}
           </div>
-          <select
-            value={item.status}
-            disabled={!canEdit}
-            onChange={(e) => onPatch(item, { status: e.target.value as EstimateItemStatus })}
-            className="text-xs rounded-md border border-border bg-background px-2 py-1.5 shrink-0"
-          >
-            {ESTIMATE_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
 
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <Camera className="h-3.5 w-3.5" />
-          {item.photo_count > 0 ? `${item.photo_count} photo${item.photo_count === 1 ? "" : "s"}` : "No photos"}
-        </div>
-        <textarea
-          value={notes} disabled={!canEdit}
-          onChange={(e) => setNotes(e.target.value)} onBlur={commit}
-          placeholder="Tech note / concern detail…" rows={2}
-          className="w-full text-xs rounded-md border border-border bg-background p-2 resize-y"
-        />
+          {/* Notes */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1">Tech note / concern detail</p>
+            <textarea
+              value={notes} disabled={!canEdit}
+              onChange={(e) => setNotes(e.target.value)} rows={3}
+              placeholder="Describe the concern, parts needed, etc."
+              className="w-full text-sm rounded-md border border-border bg-background p-2 resize-y"
+            />
+          </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Field label="Labor hrs">
-            <Input type="number" min={0} step={0.1} value={hours} disabled={!canEdit}
-              onChange={(e) => setHours(e.target.value)} onBlur={commit} className="h-9 text-xs" />
-          </Field>
-          <Field label="Labor rate">
-            <Input type="number" min={0} step={1} value={rate} disabled={!canEdit}
-              onChange={(e) => setRate(e.target.value)} onBlur={commit} className="h-9 text-xs" />
-          </Field>
-          <Field label="Labor cost">
-            <div className="h-9 flex items-center text-xs font-mono text-muted-foreground">{money(laborCost)}</div>
-          </Field>
-          <Field label="Parts cost">
-            <Input type="number" min={0} step={0.01} value={partsCost} disabled={!canEdit}
-              onChange={(e) => setPartsCost(e.target.value)} onBlur={commit} className="h-9 text-xs" />
-          </Field>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Pricing */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <Field label="Labor hrs"><Input type="number" min={0} step={0.1} value={hours} disabled={!canEdit} onChange={(e) => setHours(e.target.value)} className="h-9 text-sm" /></Field>
+            <Field label="Labor rate"><Input type="number" min={0} step={1} value={rate} disabled={!canEdit} onChange={(e) => setRate(e.target.value)} className="h-9 text-sm" /></Field>
+            <Field label="Labor cost"><div className="h-9 flex items-center text-sm font-mono text-muted-foreground">{money(laborCost)}</div></Field>
+            <Field label="Parts cost"><Input type="number" min={0} step={0.01} value={partsCost} disabled={!canEdit} onChange={(e) => setPartsCost(e.target.value)} className="h-9 text-sm" /></Field>
+          </div>
           <Field label="Parts description">
-            <Input value={partsDesc} disabled={!canEdit}
-              onChange={(e) => setPartsDesc(e.target.value)} onBlur={commit} placeholder="Part(s) needed" className="h-9 text-xs" />
+            <Input value={partsDesc} disabled={!canEdit} onChange={(e) => setPartsDesc(e.target.value)} placeholder="Part(s) needed" className="h-9 text-sm" />
           </Field>
-          <Field label="Line total">
-            <div className="h-9 flex items-center text-sm font-bold text-foreground">{money(laborCost + (Number(partsCost) || 0))}</div>
-          </Field>
+
+          {/* Status + line total */}
+          <div className="flex items-end justify-between gap-3 pt-1">
+            <Field label="Status">
+              <select value={status} disabled={!canEdit} onChange={(e) => setStatus(e.target.value as EstimateItemStatus)}
+                className="h-9 text-sm rounded-md border border-border bg-background px-2 min-w-[140px]">
+                {ESTIMATE_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+            <div className="text-right">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Line total</p>
+              <p className="text-lg font-bold text-foreground">{money(lineTotal)}</p>
+            </div>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>{canEdit ? "Cancel" : "Close"}</Button>
+          {canEdit && (
+            <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
