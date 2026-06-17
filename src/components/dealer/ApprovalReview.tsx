@@ -128,10 +128,10 @@ export default function ApprovalReview({ unitId, role, onMoved }: Props) {
       {noLines ? (
         <Card className="glass-panel border-border"><CardContent className="py-8 text-center text-sm text-muted-foreground">No estimate lines submitted.</CardContent></Card>
       ) : lines.map((l) => (
-        <Card key={l.id} className="glass-panel border-border">
+        <Card key={l.id} className={`glass-panel border-border ${l.status === "declined" ? "opacity-50" : ""}`}>
           <CardContent className="p-3 space-y-1.5">
             <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">{l.concern}</p>
+              <p className={`text-sm font-semibold text-foreground ${l.status === "declined" ? "line-through" : ""}`}>{l.concern}</p>
               <Badge variant="outline" className={`text-[10px] uppercase ${l.status === "needs_pricing" ? "text-amber-600 border-amber-500/40" : "text-muted-foreground"}`}>
                 {l.status.replace("_", " ")}
               </Badge>

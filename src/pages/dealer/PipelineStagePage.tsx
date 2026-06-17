@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, Search } from "lucide-react";
 import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
+import { listRepairTasks } from "@/lib/repairTasks";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
 import { SLUG_TO_STATUS, STAGE_META, type UnitStatus } from "@/lib/pipeline";
 import { hoursInStage, formatAgingDuration } from "@/hooks/useStageAging";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 /** Promise-date label + color (overdue red, due-today yellow, future green). */
 function promiseInfo(promise?: string | null): { text: string; cls: string } {
@@ -116,6 +117,7 @@ export default function PipelineStagePage() {
                     <span className={p.cls}>{p.text}</span>
                     <span className="text-muted-foreground">{timerLabel(unit, meta.label)}</span>
                   </div>
+                  {status === "repair" && <RepairLaneMeta unitId={String(unit.id)} />}
                 </div>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
                   <Eye className="h-4 w-4 text-muted-foreground" />
@@ -125,6 +127,27 @@ export default function PipelineStagePage() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Repair-lane card extras: task progress, approved total, parts status. */
+function RepairLaneMeta({ unitId }: { unitId: string }) {
+  const [s, setS] = useState<{ completed: number; total: number; approved: number; wp: number; wv: number } | null>(null);
+  useEffect(() => {
+    let on = true;
+    listRepairTasks(unitId)
+      .then((d) => { if (on && d.available && d.summary.total > 0) setS({ completed: d.summary.completed, total: d.summary.total, approved: d.summary.approved_total, wp: d.summary.waiting_parts, wv: d.summary.waiting_vendor }); })
+      .catch(() => {});
+    return () => { on = false; };
+  }, [unitId]);
+  if (!s) return null;
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+      <span className="font-semibold text-foreground">Tasks {s.completed}/{s.total}</span>
+      <span className="text-muted-foreground">${Math.round(s.approved).toLocaleString()}</span>
+      <span className={s.wp > 0 ? "text-amber-600" : "text-muted-foreground"}>{s.wp > 0 ? "Parts pending" : "Parts ready"}</span>
+      {s.wv > 0 && <span className="text-amber-600">Vendor hold</span>}
     </div>
   );
 }

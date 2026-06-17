@@ -38,7 +38,7 @@ import CarfaxCard from "@/components/dealer/CarfaxCard";
 import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
 import EstimateItemsTable from "@/components/dealer/EstimateItemsTable";
 import ApprovalReview from "@/components/dealer/ApprovalReview";
-import RepairView from "@/components/dealer/estimate/RepairView";
+import RepairTasks from "@/components/dealer/RepairTasks";
 import {
   STAGE_META, STAGE_DEFAULT_TAB, STATUS_TO_SLUG, ALL_STATUSES,
   isStageBefore, type UnitStatus,
@@ -424,10 +424,13 @@ export default function UnitDetailPage() {
 
         {/* Repair Tab */}
         <TabsContent value="repair" className="mt-4">
-          <RepairView
+          <RepairTasks
             unitId={unit.id}
             dealerId={dealerId}
-            onStageAdvance={handleStageAdvance}
+            unit={unit}
+            role={role}
+            readOnly={isStageBefore("repair", currentStatus)}
+            onMoved={handleStageAdvance}
           />
         </TabsContent>
 

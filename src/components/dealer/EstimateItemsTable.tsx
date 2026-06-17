@@ -124,16 +124,17 @@ export default function EstimateItemsTable({ unitId, role, readOnly = false, onM
         <ul className="divide-y divide-border/50">
           {items.map((it) => {
             const laborCost = it.labor_hours * it.labor_rate;
+            const declined = it.status === "declined";
             return (
               <li key={it.id}>
                 <button
                   type="button"
                   onClick={() => setOpenId(it.id)}
-                  className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-muted/40 transition-colors"
+                  className={`w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-muted/40 transition-colors ${declined ? "opacity-50" : ""}`}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground truncate">{it.concern}</span>
+                      <span className={`text-sm font-medium text-foreground truncate ${declined ? "line-through" : ""}`}>{it.concern}</span>
                       {it.photo_count > 0 && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground"><Camera className="h-3 w-3" />{it.photo_count}</span>
                       )}
