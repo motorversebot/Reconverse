@@ -67,17 +67,37 @@ export default function VinScanner({
     readerRef.current = reader;
     let cancelled = false;
 
+    const onResult = (result: any) => {
+      if (!result) return;
+      const vin = extractVin(result.getText());
+      if (vin) finish(vin);
+    };
+
     (async () => {
       try {
-        const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (result) => {
-          if (!result) return;
-          const vin = extractVin(result.getText());
-          if (vin) finish(vin);
-        });
+        let controls: IScannerControls;
+        // Prefer the REAR camera. On phones, the default device is usually the
+        // front/selfie cam, which can't see the VIN — force facingMode first.
+        try {
+          controls = await reader.decodeFromConstraints(
+            { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+            videoRef.current!,
+            onResult,
+          );
+        } catch {
+          // Fallback: explicitly pick a back-facing device by label.
+          let deviceId: string | undefined;
+          try {
+            const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+            const back = devices.find((d) => /back|rear|environment/i.test(d.label));
+            deviceId = (back ?? devices[devices.length - 1])?.deviceId;
+          } catch { /* no enumerate */ }
+          controls = await reader.decodeFromVideoDevice(deviceId, videoRef.current!, onResult);
+        }
         if (cancelled) controls.stop();
         else controlsRef.current = controls;
       } catch {
-        setError("Camera unavailable. Use “Take a photo” below, or type the VIN.");
+        setError("Camera unavailable. Allow camera access, use “Take a photo” below, or type the VIN.");
       }
     })();
 
@@ -114,7 +134,7 @@ export default function VinScanner({
         </DialogHeader>
         <div className="space-y-3">
           <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
-            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
+            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
             <div className="pointer-events-none absolute inset-x-6 top-1/2 -translate-y-1/2 h-16 rounded border-2 border-white/70" />
           </div>
           <p className="text-center text-xs text-muted-foreground">
