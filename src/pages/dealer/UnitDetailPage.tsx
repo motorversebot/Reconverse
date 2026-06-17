@@ -35,7 +35,7 @@ import UnitActivityCard from "@/components/dealer/UnitActivityCard";
 import ActivityTab, { useActivityCount } from "@/components/dealer/activity/ActivityTab";
 import CarfaxCard from "@/components/dealer/CarfaxCard";
 import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
-import EstimateBuilder from "@/components/dealer/estimate/EstimateBuilder";
+import EstimateItemsTable from "@/components/dealer/EstimateItemsTable";
 import ApprovalView from "@/components/dealer/estimate/ApprovalView";
 import RepairView from "@/components/dealer/estimate/RepairView";
 import {
@@ -363,25 +363,13 @@ export default function UnitDetailPage() {
                 Estimate is read-only — this unit has moved past Estimate.
               </div>
             )}
-            <EstimateBuilder
+            <EstimateItemsTable
               unitId={unit.id}
               dealerId={dealerId}
+              role={role}
               readOnly={estimateReadOnly}
-              onEstimateReady={handleEstimateReady}
+              onMoved={handleStageAdvance}
             />
-            {showAdvanceButton && currentStatus === "estimate" && nextStatus && canAdvance && (
-              <div className="flex sm:justify-end pt-2 sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
-                  Move to {STAGE_META[nextStatus].label}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            {currentStatus === "estimate" && !canAdvance && estimateStatus === "draft" && !staffOnly && (
-              <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
-                Submit the estimate before advancing to Approval.
-              </div>
-            )}
           </div>
         </TabsContent>
 

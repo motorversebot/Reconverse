@@ -232,7 +232,6 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
         item_name: item.item_name,
         status: item.status,
         notes: item.notes ?? null,
-        inspected_by: user?.id ?? null,
       }));
       const _bulkRes = await apiFetch("/api/v1/reconverse/inspection-items/upsert", {
         method: "POST",
