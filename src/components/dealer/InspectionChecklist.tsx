@@ -121,13 +121,17 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
 
   const { data: savedItems, isLoading } = useQuery({
     queryKey: ["inspection-items", unitId],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unit_inspection_items" as any)
-        .select("*")
-        .eq("unit_id", unitId);
-      if (error) throw error;
-      return data as any[] as InspectionItem[];
+      // Resilient read: resolve to a blank checklist on any failure (no hang, no hard error).
+      try {
+        const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/inspection-items`);
+        if (!res.ok) return [] as InspectionItem[];
+        const j = await res.json().catch(() => null);
+        return (j?.ok ? (j.data?.items ?? j.data ?? []) : []) as InspectionItem[];
+      } catch {
+        return [] as InspectionItem[];
+      }
     },
   });
 
@@ -332,8 +336,8 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
   if (isLoading) {
     return (
       <Card className="glass-panel border-border">
-        <CardContent className="flex items-center justify-center py-16">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <CardContent className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading inspection…
         </CardContent>
       </Card>
     );

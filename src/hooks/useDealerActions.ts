@@ -11,13 +11,25 @@ export function useCreateDealerUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { dealer_id: string; email: string; password: string; role: string; full_name?: string }) => {
-      const res = await apiFetch("/api/v1/reconverse/dealer-users", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await res.json().catch(() => null);
-      if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
-      return j.data;
+      const attempt = async (extra: Record<string, unknown>) => {
+        const res = await apiFetch("/api/v1/reconverse/dealer-users", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, ...extra }),
+        });
+        const j = await res.json().catch(() => null);
+        if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
+        return j.data;
+      };
+      try {
+        return await attempt({});
+      } catch (e: any) {
+        // Usernames are global; if the derived one is taken, retry with a unique suffix.
+        if (String(e?.message) === "username_in_use") {
+          const base = (payload.email.split("@")[0] || "user").toLowerCase().replace(/[^a-z0-9]/g, "");
+          return await attempt({ username: `${base}.${Math.floor(100 + Math.random() * 900)}` });
+        }
+        throw e;
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dealer-members"] }),
   });

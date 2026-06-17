@@ -237,48 +237,48 @@ export default function UnitDetailPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="h-8 w-8 p-0">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-foreground truncate">{title}</h1>
-          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-            {unit.vin && <span className="font-mono text-xs">{unit.vin}</span>}
-            <span className="text-xs">Stock #{unit.stock_number?.trim() || "—"}</span>
-            <Badge variant="outline" className="text-xs">{stageMeta?.label ?? unit.status}</Badge>
-          </div>
-        </div>
+      <div className="space-y-2">
+        <div className="flex items-start gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="h-9 w-9 p-0 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="flex-1 min-w-0 text-lg sm:text-xl font-bold text-foreground leading-tight break-words">{title}</h1>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportPdf}
-          disabled={exporting}
-          className="gap-1.5 text-xs"
-        >
-          {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-          Export PDF
-        </Button>
+          {/* Desktop: Export button inline */}
+          <Button
+            variant="outline" size="sm" onClick={handleExportPdf} disabled={exporting}
+            className="hidden sm:inline-flex gap-1.5 text-xs shrink-0"
+          >
+            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+            Export PDF
+          </Button>
 
-        {showArchive && (
+          {/* Overflow menu (Export PDF on mobile, Archive when allowed) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => setArchiveOpen(true)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Archive className="h-4 w-4 mr-2" />
-                Archive Vehicle
+              <DropdownMenuItem className="sm:hidden" onClick={handleExportPdf} disabled={exporting}>
+                <FileDown className="h-4 w-4 mr-2" /> Export PDF
               </DropdownMenuItem>
+              {showArchive && (
+                <DropdownMenuItem onClick={() => setArchiveOpen(true)} className="text-destructive focus:text-destructive">
+                  <Archive className="h-4 w-4 mr-2" /> Archive Vehicle
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
-        )}
+        </div>
+
+        {/* Identifiers + stage badge (wrap cleanly on mobile) */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground pl-11">
+          {unit.vin && <span className="font-mono break-all">{unit.vin}</span>}
+          <span>Stock #{unit.stock_number?.trim() || "—"}</span>
+          <Badge variant="outline" className="text-xs">{stageMeta?.label ?? unit.status}</Badge>
+        </div>
       </div>
 
       {/* Stage progress bar */}
@@ -317,9 +317,9 @@ export default function UnitDetailPage() {
 
       {/* Stage Tabs */}
       <Tabs value={effectiveTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-muted/50 w-full justify-start">
+        <TabsList className="bg-muted/50 w-full justify-start flex-nowrap overflow-x-auto no-scrollbar">
           {tabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5 text-xs sm:text-sm shrink-0">
               <tab.icon className="h-3.5 w-3.5" /> {tab.label}
               {tab.id === "activity" && activityCount > 0 && (
                 <span className="text-[10px] text-muted-foreground ml-0.5">({activityCount})</span>
@@ -338,8 +338,8 @@ export default function UnitDetailPage() {
             )}
             <InspectionChecklist unitId={unit.id} dealerId={dealerId} readOnly={mpiReadOnly} />
             {showAdvanceButton && currentStatus === "inspection" && nextStatus && (
-              <div className="flex justify-end pt-2">
-                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2">
+              <div className="flex sm:justify-end pt-2 sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
                   Move to {STAGE_META[nextStatus].label}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -368,8 +368,8 @@ export default function UnitDetailPage() {
               onEstimateReady={handleEstimateReady}
             />
             {showAdvanceButton && currentStatus === "estimate" && nextStatus && canAdvance && (
-              <div className="flex justify-end pt-2">
-                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2">
+              <div className="flex sm:justify-end pt-2 sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
                   Move to {STAGE_META[nextStatus].label}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -407,8 +407,8 @@ export default function UnitDetailPage() {
           <div className="space-y-4">
             <InspectionChecklist unitId={unit.id} dealerId={dealerId} />
             {showAdvanceButton && currentStatus === "qc" && nextStatus && (
-              <div className="flex justify-end pt-2">
-                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2">
+              <div className="flex sm:justify-end pt-2 sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                <Button onClick={handleAdvanceStage} disabled={updateUnit.isPending} className="gap-2 w-full sm:w-auto min-h-[44px]">
                   Ready for Sale
                   <ArrowRight className="h-4 w-4" />
                 </Button>

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ALL_STATUSES, STAGE_META, stageIndex, type UnitStatus } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 
@@ -7,16 +8,26 @@ interface Props {
 
 export default function StageProgressBar({ status }: Props) {
   const currentIdx = stageIndex(status);
+  const activeRef = useRef<HTMLDivElement>(null);
+
+  // Keep the active stage visible on small screens.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [currentIdx]);
 
   return (
-    <div className="flex items-center gap-1 w-full">
+    <div className="flex items-center gap-1 w-full overflow-x-auto no-scrollbar pb-1">
       {ALL_STATUSES.map((s, idx) => {
         const meta = STAGE_META[s];
         const isCompleted = idx < currentIdx;
         const isCurrent = idx === currentIdx;
 
         return (
-          <div key={s} className="flex-1 flex flex-col items-center gap-1.5">
+          <div
+            key={s}
+            ref={isCurrent ? activeRef : undefined}
+            className="flex-1 min-w-[64px] flex flex-col items-center gap-1.5"
+          >
             <div
               className={cn(
                 "h-2 w-full rounded-full transition-all",
