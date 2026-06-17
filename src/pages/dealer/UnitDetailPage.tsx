@@ -33,6 +33,7 @@ import UnitNotesCard from "@/components/dealer/UnitNotesCard";
 import UnitCommentsCard from "@/components/dealer/UnitCommentsCard";
 import UnitActivityCard from "@/components/dealer/UnitActivityCard";
 import ActivityTab, { useActivityCount } from "@/components/dealer/activity/ActivityTab";
+import CarfaxCard from "@/components/dealer/CarfaxCard";
 import EstimateBuilder from "@/components/dealer/estimate/EstimateBuilder";
 import ApprovalView from "@/components/dealer/estimate/ApprovalView";
 import RepairView from "@/components/dealer/estimate/RepairView";
@@ -310,6 +311,9 @@ export default function UnitDetailPage() {
           You have read-only access. Contact a manager or admin for recon operations.
         </div>
       )}
+
+      {/* CARFAX report */}
+      <CarfaxCard unit={unit} dealerId={dealerId} role={role} />
 
       {/* Stage Tabs */}
       <Tabs value={effectiveTab} onValueChange={setActiveTab}>

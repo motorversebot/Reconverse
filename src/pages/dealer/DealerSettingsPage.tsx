@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { User, Sun, Moon, Monitor, KeyRound, Mail, Shield, LogOut, Save } from "lucide-react";
+import { User, Sun, Moon, Monitor, KeyRound, Mail, Shield, LogOut, Save, ShieldCheck } from "lucide-react";
+import { useCurrentDealer } from "@/hooks/useDealerData";
+import { getCarfaxConfig, saveCarfaxConfig, CARFAX_TEMPLATE_HINT, type CarfaxConfig } from "@/lib/carfax";
+import { canManageUsers } from "@/lib/permissions";
 
 type Theme = "dark" | "light" | "system";
 
@@ -47,6 +50,18 @@ export default function DealerSettingsPage() {
 
   const [signOutLoading, setSignOutLoading] = useState(false);
   const lastSignIn = user?.last_sign_in_at;
+
+  // CARFAX Link Reports config (dealer-scoped, Phase 1)
+  const { data: membership } = useCurrentDealer();
+  const dealerId = membership?.dealer_id;
+  const canManageCarfax = canManageUsers(membership?.role);
+  const [carfax, setCarfax] = useState<CarfaxConfig>({ enabled: false, linkTemplate: "", badgeType: "CARFAX Report" });
+  useEffect(() => { if (dealerId) setCarfax(getCarfaxConfig(dealerId)); }, [dealerId]);
+  const handleSaveCarfax = () => {
+    if (!dealerId) return;
+    saveCarfaxConfig(dealerId, carfax);
+    toast({ title: "CARFAX settings saved" });
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -176,6 +191,57 @@ export default function DealerSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* CARFAX Integration */}
+      {canManageCarfax && (
+        <Card className="glass-panel border-border">
+          <CardHeader className="flex flex-row items-center gap-3 pb-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">CARFAX Link Reports</CardTitle>
+              <CardDescription>Paste your dealer Link template to auto-generate report links per VIN</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={carfax.enabled}
+                onChange={(e) => setCarfax({ ...carfax, enabled: e.target.checked })}
+                className="h-4 w-4 accent-primary"
+              />
+              Enable CARFAX links
+            </label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Link template</label>
+              <Input
+                value={carfax.linkTemplate}
+                onChange={(e) => setCarfax({ ...carfax, linkTemplate: e.target.value })}
+                placeholder={CARFAX_TEMPLATE_HINT}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                From carfaxonline.com → Resources → Link Reports. Use <code className="font-mono">{"{VIN}"}</code> where the VIN goes (it'll be substituted per vehicle).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Badge label</label>
+              <Input
+                value={carfax.badgeType}
+                onChange={(e) => setCarfax({ ...carfax, badgeType: e.target.value })}
+                placeholder="CARFAX Report"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button variant="hero" size="sm" onClick={handleSaveCarfax} className="gap-2">
+                <Save className="h-4 w-4" /> Save CARFAX Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Appearance */}
       <Card className="glass-panel border-border">
