@@ -490,9 +490,6 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
                       const key = `${item.category}::${item.item_name}`;
                       const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending;
                       const Icon = cfg.icon;
-                      const noteOpen = expandedNotes[key] ?? false;
-                      const noteVal = noteValues[key] ?? item.notes ?? "";
-
                       const detailOpen = (expandedNotes[key] ?? false) || item.status === "fail" || item.status === "repair_needed";
                       const noteVal = noteValues[key] ?? item.notes ?? "";
                       const laborVal = laborValues[key] ?? (item.labor_hours != null ? String(item.labor_hours) : "");
