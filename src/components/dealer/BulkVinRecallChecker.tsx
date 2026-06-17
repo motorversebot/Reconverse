@@ -494,7 +494,7 @@ export default function BulkVinRecallChecker({ onSaved }: { onSaved?: () => void
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
