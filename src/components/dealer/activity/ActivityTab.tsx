@@ -11,21 +11,22 @@ import ActivityTimeline from "./ActivityTimeline";
 const CATEGORIES: { value: string; label: string }[] = [
   { value: "all", label: "All Events" },
   { value: "stage", label: "Stage Changes" },
-  { value: "mpi", label: "MPI" },
   { value: "estimate", label: "Estimate" },
+  { value: "mpi", label: "MPI" },
   { value: "photo", label: "Photos" },
   { value: "note", label: "Notes" },
-  { value: "carfax", label: "CARFAX" },
+  { value: "carfax", label: "CARFAX / Recalls" },
   { value: "system", label: "System" },
 ];
 
 function categoryOf(actionType: string): string {
   if (actionType === "stage_change") return "stage";
-  if (actionType === "comment_added") return "note";
-  if (actionType === "photo_uploaded") return "photo";
-  if (actionType === "carfax_link") return "carfax";
+  if (actionType === "comment_added" || actionType === "note_added") return "note";
+  if (actionType.startsWith("photo")) return "photo";
+  if (actionType.startsWith("carfax") || actionType.startsWith("recall")) return "carfax";
   if (actionType.startsWith("mpi")) return "mpi";
-  if (actionType.startsWith("estimate") || actionType.startsWith("operation") || actionType.startsWith("work_order") || actionType === "repair_item_done")
+  if (actionType.startsWith("estimate") || actionType === "moved_to_estimate"
+    || actionType.startsWith("operation") || actionType.startsWith("work_order") || actionType === "repair_item_done")
     return "estimate";
   return "system";
 }
@@ -66,6 +67,12 @@ export default function ActivityTab({ unitId, dealerId, currentStatus, unit }: P
   }, [activities, selectedStage, userFilter, categoryFilter]);
 
   const totalCount = activities.length;
+
+  // Only offer category filters that actually have matching events.
+  const availableCategories = useMemo(() => {
+    const present = new Set(activities.map((a) => categoryOf(a.action_type)));
+    return CATEGORIES.filter((c) => c.value === "all" || present.has(c.value));
+  }, [activities]);
 
   if (isLoading) {
     return (
@@ -126,7 +133,7 @@ export default function ActivityTab({ unitId, dealerId, currentStatus, unit }: P
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-[150px] h-7 text-xs"><SelectValue placeholder="All Events" /></SelectTrigger>
           <SelectContent>
-            {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+            {availableCategories.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
           </SelectContent>
         </Select>
 

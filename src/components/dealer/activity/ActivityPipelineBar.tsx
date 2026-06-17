@@ -55,8 +55,8 @@ export default function ActivityPipelineBar({ currentStatus, activities, selecte
                     className={cn(
                       "flex flex-col items-center gap-1 px-2 py-2 rounded-lg w-full transition-all duration-200",
                       isSelected && "ring-1 ring-primary/40 bg-muted/20",
-                      isActive && "bg-muted/15",
-                      isFuture && "opacity-30",
+                      isActive && "bg-muted/30 ring-1 ring-border",
+                      isFuture && "opacity-55",
                       !isFuture && "hover:bg-muted/20 cursor-pointer"
                     )}
                   >
