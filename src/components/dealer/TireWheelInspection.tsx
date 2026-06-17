@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useTireInspection,
   type ConditionFlag,
@@ -60,11 +61,28 @@ function getPsiColor(psi: number | null | undefined): string {
   return "";
 }
 
-function getTreadColor(depth: number | null | undefined): string {
-  if (depth == null) return "";
-  if (depth <= 2) return "text-destructive border-destructive/50";
-  if (depth <= 4) return "text-amber-500 border-amber-500/50";
-  return "";
+// Dealership tread range: 2/32 … 12/32 plus a "12+/32" (stored as 13).
+const TREAD_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+
+function treadLabel(v: number | null | undefined): string {
+  if (v == null) return "—";
+  if (v >= 13) return "12+/32";
+  return `${v}/32`;
+}
+
+// Color rules: red 2–3, yellow 4–5, green 6+, neutral when blank.
+function treadColorClasses(v: number | null | undefined): string {
+  if (v == null) return "border-border text-muted-foreground";
+  if (v <= 3) return "border-destructive/50 text-destructive";
+  if (v <= 5) return "border-amber-500/50 text-amber-500";
+  return "border-emerald-500/50 text-emerald-500";
+}
+
+function treadTextColor(v: number | null | undefined): string {
+  if (v == null) return "text-muted-foreground";
+  if (v <= 3) return "text-destructive";
+  if (v <= 5) return "text-amber-500";
+  return "text-emerald-500";
 }
 
 interface Props {
@@ -84,7 +102,6 @@ export default function TireWheelInspection({ unitId, dealerId, readOnly = false
 
   const [defaultPsi, setDefaultPsi] = useState("35");
 
-  const treadRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const psiRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const statusCfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.ok;
@@ -103,11 +120,6 @@ export default function TireWheelInspection({ unitId, dealerId, readOnly = false
       nextRefs.current[POSITIONS[0]]?.focus();
     }
   }, []);
-
-  const updateTread = (pos: string, val: string) => {
-    const num = val === "" ? null : parseFloat(val);
-    setTreadDepth(prev => ({ ...prev, [pos]: num }));
-  };
 
   const updatePressure = (pos: string, val: string) => {
     const num = val === "" ? null : parseFloat(val);
@@ -228,10 +240,8 @@ export default function TireWheelInspection({ unitId, dealerId, readOnly = false
               </div>
               <div className="flex items-center gap-2">
                 {lowestTread && (
-                  <span className={`text-[11px] font-mono font-medium ${
-                    lowestTread.value <= 2 ? "text-destructive" : lowestTread.value <= 4 ? "text-amber-500" : "text-muted-foreground"
-                  }`}>
-                    Lowest: {lowestTread.value}/32 ({lowestTread.position})
+                  <span className={`text-[11px] font-mono font-medium ${treadTextColor(lowestTread.value)}`}>
+                    Lowest: {treadLabel(lowestTread.value)} ({lowestTread.position})
                   </span>
                 )}
                 {!readOnly && (
@@ -262,39 +272,33 @@ export default function TireWheelInspection({ unitId, dealerId, readOnly = false
                   <div className="grid grid-cols-2 gap-2">
                     {POSITIONS.map(pos => {
                       const val = treadDepth[pos];
-                      const colorCls = getTreadColor(val);
                       return (
-                        <div key={pos} className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium text-muted-foreground w-6">{POS_LABELS[pos]}</span>
-                          <div className="flex items-center gap-0">
-                            <Input
-                              ref={el => { treadRefs.current[pos] = el; }}
-                              type="number"
-                              min={0}
-                              max={32}
-                              step={1}
-                              value={val ?? ""}
-                              onChange={e => updateTread(pos, e.target.value)}
-                              onKeyDown={e => handleKeyDown(e, treadRefs, pos, psiRefs)}
-                              className={`h-8 text-sm w-16 rounded-r-none border-r-0 text-center ${colorCls}`}
-                              placeholder="—"
-                              disabled={readOnly}
-                            />
-                            <span className="h-8 flex items-center px-1.5 text-[10px] text-muted-foreground bg-muted border border-l-0 border-border rounded-r-md font-mono">
-                              /32
-                            </span>
-                          </div>
+                        <div key={pos} className="space-y-1">
+                          <span className="text-[11px] font-medium text-muted-foreground">{POS_LABELS[pos]}</span>
+                          <Select
+                            value={val == null ? "none" : String(val)}
+                            onValueChange={(v) => setTreadDepth(prev => ({ ...prev, [pos]: v === "none" ? null : Number(v) }))}
+                            disabled={readOnly}
+                          >
+                            <SelectTrigger className={`min-h-[44px] h-11 w-full text-sm font-semibold border ${treadColorClasses(val)}`}>
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">—</SelectItem>
+                              {TREAD_OPTIONS.map(o => (
+                                <SelectItem key={o} value={String(o)}>{treadLabel(o)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       );
                     })}
                   </div>
-                  {lowestTread && (
-                    <p className={`text-[11px] mt-1.5 font-medium ${
-                      lowestTread.value <= 2 ? "text-destructive" : lowestTread.value <= 4 ? "text-amber-500" : "text-emerald-500"
-                    }`}>
-                      Lowest tread: {lowestTread.value}/32 ({lowestTread.position})
-                    </p>
-                  )}
+                  <p className={`text-[11px] mt-2 font-medium ${treadTextColor(lowestTread ? lowestTread.value : null)}`}>
+                    {lowestTread
+                      ? `Lowest tread: ${treadLabel(lowestTread.value)} (${lowestTread.position})`
+                      : "Lowest tread: —"}
+                  </p>
                 </div>
 
                 {/* Tire Pressure */}

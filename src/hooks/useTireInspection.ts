@@ -67,10 +67,10 @@ function computeStatus(tread: TireMap, psi: TireMap, flags: Record<ConditionFlag
   const treads = POSITIONS.map((p) => tread[p]).filter((v): v is number => v != null && !isNaN(v));
   const psis = POSITIONS.map((p) => psi[p]).filter((v): v is number => v != null && !isNaN(v));
   if (RED_FLAGS.some((f) => flags[f])) return "fail";
-  if (treads.some((t) => t <= 2)) return "fail";
+  if (treads.some((t) => t <= 3)) return "fail";
   if (psis.some((p) => p < 20)) return "fail";
   const anyYellowFlag = ALL_FLAGS.some((f) => f !== "low_tread" && !RED_FLAGS.includes(f) && flags[f]);
-  const lowTread = treads.some((t) => t <= 4);
+  const lowTread = treads.some((t) => t <= 5);
   const offPsi = psis.some((p) => Math.abs(p - 35) > 5);
   const wheelAttn = WHEEL_KEYS.some((k) => wheels[k]?.status === "attention");
   if (anyYellowFlag || lowTread || offPsi || wheelAttn) return "attention";
@@ -114,7 +114,7 @@ export function useTireInspection(unitId: string | undefined, dealerId: string |
   const lowestTread = useMemo(() => computeLowest(treadDepth), [treadDepth]);
 
   // low_tread is auto-derived from the lowest tread reading.
-  const autoLowTread = !!lowestTread && lowestTread.value <= 4;
+  const autoLowTread = !!lowestTread && lowestTread.value <= 5;
   const flagsWithAuto = useMemo<Record<ConditionFlag, boolean>>(
     () => ({ ...conditionFlags, low_tread: autoLowTread }),
     [conditionFlags, autoLowTread],
