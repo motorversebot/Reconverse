@@ -313,7 +313,7 @@ export default function UnitDetailPage() {
       )}
 
       {/* CARFAX report */}
-      <CarfaxCard unit={unit} dealerId={dealerId} role={role} />
+      <CarfaxCard unit={unit} unitId={unit.id} dealerId={dealerId} role={role} />
 
       {/* Stage Tabs */}
       <Tabs value={effectiveTab} onValueChange={setActiveTab}>

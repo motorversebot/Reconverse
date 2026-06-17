@@ -9,7 +9,7 @@ import { resolveCarfax, type CarfaxLinkStatus } from "@/lib/carfax";
 import { exportRows } from "@/lib/recalls";
 
 const STATUS_LABEL: Record<CarfaxLinkStatus, string> = {
-  available: "Linked",
+  attached: "Linked",
   expired: "Expired",
   missing: "Not attached",
   not_configured: "Not configured",
@@ -37,7 +37,7 @@ export default function CarfaxLinksReport() {
   }, [units, dealerId]);
 
   const counts = useMemo(() => {
-    const c = { available: 0, missing: 0, not_configured: 0, expired: 0 } as Record<CarfaxLinkStatus, number>;
+    const c = { attached: 0, missing: 0, not_configured: 0, expired: 0 } as Record<CarfaxLinkStatus, number>;
     rows.forEach((r) => { c[r.carfax_link_status as CarfaxLinkStatus]++; });
     return c;
   }, [rows]);
@@ -45,7 +45,7 @@ export default function CarfaxLinksReport() {
   const handleExport = (fmt: "csv" | "xlsx") => exportRows(rows, "carfax_links", fmt, "CARFAX Links");
 
   const badge = (s: CarfaxLinkStatus) => {
-    const cls = s === "available" ? "text-primary border-primary/40"
+    const cls = s === "attached" ? "text-primary border-primary/40"
       : s === "expired" ? "text-amber-600 border-amber-500/40"
       : "text-muted-foreground";
     return <Badge variant="outline" className={`text-xs ${cls}`}>{STATUS_LABEL[s]}</Badge>;
@@ -55,7 +55,7 @@ export default function CarfaxLinksReport() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span className="text-primary">{counts.available} linked</span>
+          <span className="text-primary">{counts.attached} linked</span>
           <span>· {counts.missing} not attached</span>
           <span>· {counts.not_configured} not configured</span>
           {counts.expired > 0 && <span>· {counts.expired} expired</span>}

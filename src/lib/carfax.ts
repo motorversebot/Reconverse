@@ -11,8 +11,9 @@
  * records in MC (carfax_report_url, carfax_link_status, …) with the same shape.
  */
 import { normalizeVin, isValidVin } from "@/lib/recalls";
+import { apiFetch } from "@/lib/api";
 
-export type CarfaxLinkStatus = "not_configured" | "available" | "missing" | "expired";
+export type CarfaxLinkStatus = "not_configured" | "attached" | "missing" | "expired";
 
 /** Per-unit CARFAX state (mirrors the intended persisted columns). */
 export interface CarfaxInfo {
@@ -90,7 +91,7 @@ function getUnitLink(dealerId: string, vin: string): StoredUnitLink | null {
 export function attachCarfaxLink(dealerId: string, vin: string, url: string, badgeType?: string): void {
   const v = normalizeVin(vin);
   if (!dealerId || !v) return;
-  const rec: StoredUnitLink = { url, badgeType, status: "available", lastCheckedAt: new Date().toISOString() };
+  const rec: StoredUnitLink = { url, badgeType, status: "attached", lastCheckedAt: new Date().toISOString() };
   try { localStorage.setItem(UNIT_KEY(dealerId, v), JSON.stringify(rec)); } catch { /* ignore */ }
 }
 
@@ -124,7 +125,7 @@ export function resolveCarfax(unit: { vin?: string | null }, dealerId?: string):
       vin,
       carfax_report_url: stored.url,
       carfax_badge_type: stored.badgeType || cfg.badgeType || "CARFAX Report",
-      carfax_link_status: stored.status || "available",
+      carfax_link_status: stored.status || "attached",
       carfax_last_checked_at: stored.lastCheckedAt || null,
     };
   }
@@ -141,4 +142,98 @@ export function resolveCarfax(unit: { vin?: string | null }, dealerId?: string):
 export function canGenerateCarfax(unit: { vin?: string | null }, dealerId?: string): boolean {
   const cfg = getCarfaxConfig(dealerId);
   return !!dealerId && cfg.enabled && !!cfg.linkTemplate && isValidVin(normalizeVin(unit?.vin));
+}
+
+// ── URL extraction & host validation ───────────────────────────────────────
+// Only carfax.com / carfaxonline.com links are accepted. Pasted HTML is parsed
+// for its href (DOMParser does NOT execute scripts) — nothing is ever executed.
+export const ALLOWED_CARFAX_HOSTS = [
+  "carfax.com", "www.carfax.com",
+  "carfaxonline.com", "www.carfaxonline.com",
+];
+
+function hostAllowed(hostname: string): boolean {
+  return ALLOWED_CARFAX_HOSTS.includes(String(hostname || "").toLowerCase());
+}
+
+/**
+ * Accepts a raw CARFAX report URL OR an HTML snippet from CARFAX Link Reports.
+ * Safely extracts the first allowed href and validates the hostname.
+ * Returns { url } on success or { error } with a friendly message.
+ */
+export function extractCarfaxUrl(input: string): { url: string | null; error: string | null } {
+  const raw = String(input || "").trim();
+  if (!raw) return { url: null, error: "Paste a CARFAX report link." };
+
+  let candidate = raw;
+  // HTML snippet → parse out the first allowed href (no execution).
+  if (/[<>]/.test(raw) && /href\s*=/i.test(raw)) {
+    try {
+      const doc = new DOMParser().parseFromString(raw, "text/html");
+      const hrefs = Array.from(doc.querySelectorAll("a[href]")).map((a) => a.getAttribute("href") || "");
+      const match = hrefs.find((h) => { try { return hostAllowed(new URL(h).hostname); } catch { return false; } });
+      if (!match) return { url: null, error: "No CARFAX link found in that snippet." };
+      candidate = match;
+    } catch {
+      return { url: null, error: "Could not read that snippet." };
+    }
+  }
+
+  let u: URL;
+  try { u = new URL(candidate); } catch { return { url: null, error: "That doesn't look like a valid link." }; }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return { url: null, error: "Link must start with http(s)." };
+  if (!hostAllowed(u.hostname)) return { url: null, error: "Link must be a carfax.com or carfaxonline.com URL." };
+  return { url: u.toString(), error: null };
+}
+
+// ── MC unit-level CARFAX (with local fallback) ─────────────────────────────
+// Expected MC endpoints:
+//   GET   /api/v1/reconverse/units/:unitId/carfax
+//   PATCH /api/v1/reconverse/units/:unitId/carfax  { carfax_report_url, carfax_badge_type }
+export interface UnitCarfax {
+  carfax_report_url: string | null;
+  carfax_badge_type: string | null;
+  carfax_link_status: CarfaxLinkStatus;
+  carfax_last_checked_at: string | null;
+}
+
+export async function getUnitCarfax(unitId: string): Promise<{ data: UnitCarfax | null; providerConfigured: boolean; persistence: "server" | "local" }> {
+  try {
+    const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/carfax`);
+    if (res.status === 404) return { data: null, providerConfigured: false, persistence: "local" };
+    const j = await res.json().catch(() => null);
+    if (res.ok && j?.ok && j.data) {
+      const d = j.data as Record<string, unknown>;
+      const url = (d.carfax_report_url as string) || null;
+      return {
+        data: {
+          carfax_report_url: url,
+          carfax_badge_type: (d.carfax_badge_type as string) || null,
+          carfax_link_status: (d.carfax_link_status as CarfaxLinkStatus) || (url ? "attached" : "missing"),
+          carfax_last_checked_at: (d.carfax_last_checked_at as string) || null,
+        },
+        providerConfigured: true,
+        persistence: "server",
+      };
+    }
+    // provider_not_configured or any soft failure → fall back to local
+    return { data: null, providerConfigured: false, persistence: "local" };
+  } catch {
+    return { data: null, providerConfigured: false, persistence: "local" };
+  }
+}
+
+export async function patchUnitCarfax(unitId: string, url: string, badgeType = "view_report"): Promise<"server" | "local"> {
+  try {
+    const res = await apiFetch(`/api/v1/reconverse/units/${unitId}/carfax`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ carfax_report_url: url, carfax_badge_type: badgeType }),
+    });
+    if (res.status !== 404) {
+      const j = await res.json().catch(() => null);
+      if (res.ok && j?.ok) return "server";
+    }
+  } catch { /* fall through to local */ }
+  return "local";
 }
