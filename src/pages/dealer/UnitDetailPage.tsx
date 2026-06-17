@@ -440,7 +440,7 @@ export default function UnitDetailPage() {
 
         {/* Activity Tab */}
         <TabsContent value="activity" className="mt-4">
-          <ActivityTab unitId={unit.id} dealerId={dealerId} currentStatus={currentStatus} />
+          <ActivityTab unitId={unit.id} dealerId={dealerId} currentStatus={currentStatus} unit={unit as unknown as Record<string, unknown>} />
         </TabsContent>
       </Tabs>
 

@@ -7,8 +7,13 @@ import type { ActivityLog } from "@/hooks/useUnitActivityLogs";
 import {
   ArrowRight, Plus, CheckCircle2, ClipboardCheck, FileText,
   Wrench, ShieldCheck, Package, CircleDot, Camera, XCircle, Send,
-  MessageSquare, ChevronDown, ChevronRight, History,
+  MessageSquare, ChevronDown, ChevronRight, History, Calendar, Download,
 } from "lucide-react";
+
+function safeDate(v: unknown): Date {
+  const d = new Date(v as string);
+  return isNaN(d.getTime()) ? new Date(0) : d;
+}
 
 /* ─── Stage color system ─── */
 const STAGE_DOT_COLORS: Record<string, string> = {
@@ -55,6 +60,11 @@ const ACTION_ICONS: Record<string, typeof ArrowRight> = {
   comment_added: MessageSquare,
   marked_ready: Package,
   photo_uploaded: Camera,
+  mpi_updated: ClipboardCheck,
+  promise_date_set: Calendar,
+  carfax_link: ShieldCheck,
+  export: Download,
+  system: CircleDot,
 };
 
 /* ─── Event title mapping ─── */
@@ -79,7 +89,12 @@ function getEventTitle(log: ActivityLog): string {
     case "comment_added": return "Note added";
     case "qc_passed": return "QC passed";
     case "marked_ready": return "Marked ready for sale";
-    default: return log.action_type.replace(/_/g, " ");
+    case "mpi_updated": return "MPI updated";
+    case "promise_date_set": return "Promise date set";
+    case "carfax_link": return "CARFAX link updated";
+    case "export": return "Report exported";
+    case "system": return "Unit updated";
+    default: return (log.action_type || "event").replace(/_/g, " ");
   }
 }
 
@@ -167,9 +182,15 @@ function EventRow({ log, isLast }: { log: ActivityLog; isLast: boolean }) {
             {/* Meta row */}
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <span className="text-[11px] text-muted-foreground/70">{userName}</span>
+              {log.user_role && (
+                <>
+                  <span className="text-[11px] text-muted-foreground/30">·</span>
+                  <span className="text-[11px] text-muted-foreground/50 capitalize">{String(log.user_role).replace(/_/g, " ")}</span>
+                </>
+              )}
               <span className="text-[11px] text-muted-foreground/30">·</span>
               <span className="text-[11px] text-muted-foreground/50">
-                {format(new Date(log.created_at), "h:mm a")}
+                {format(safeDate(log.created_at), "h:mm a")}
               </span>
             </div>
 
@@ -230,7 +251,7 @@ export default function ActivityTimeline({ activities }: Props) {
   const groups = useMemo(() => {
     const map = new Map<string, ActivityLog[]>();
     activities.forEach((log) => {
-      const dayKey = startOfDay(new Date(log.created_at)).toISOString();
+      const dayKey = startOfDay(safeDate(log.created_at)).toISOString();
       if (!map.has(dayKey)) map.set(dayKey, []);
       map.get(dayKey)!.push(log);
     });

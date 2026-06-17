@@ -1,66 +1,71 @@
 import { useState, useMemo } from "react";
-import { Loader2, History } from "lucide-react";
+import { Loader2, History, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useUnitActivityLogs } from "@/hooks/useUnitActivityLogs";
+import { useUnitActivityLogs, buildFallbackActivity, type ActivityLog } from "@/hooks/useUnitActivityLogs";
 import { STAGE_META, type UnitStatus } from "@/lib/pipeline";
 import ActivityPipelineBar from "./ActivityPipelineBar";
 import ActivityTimeline from "./ActivityTimeline";
 
-/* ─── Event type labels for filter ─── */
-const EVENT_TYPES: { value: string; label: string }[] = [
-  { value: "unit_created", label: "Unit Created" },
-  { value: "stage_change", label: "Stage Changed" },
-  { value: "estimate_submitted", label: "Estimate Submitted" },
-  { value: "estimate_approved", label: "Estimate Approved" },
-  { value: "estimate_declined", label: "Estimate Declined" },
-  { value: "operation_approved", label: "Op Approved" },
-  { value: "operation_declined", label: "Op Declined" },
-  { value: "repair_item_done", label: "Repair Done" },
-  { value: "work_order_in_progress", label: "WO Started" },
-  { value: "work_order_done", label: "WO Completed" },
-  { value: "photo_uploaded", label: "Photo Upload" },
-  { value: "comment_added", label: "Note Added" },
-  { value: "mpi_pass", label: "MPI Pass" },
-  { value: "mpi_fail", label: "MPI Fail" },
-  { value: "mpi_repair_needed", label: "MPI Repair Needed" },
+/* ─── Event categories for filter ─── */
+const CATEGORIES: { value: string; label: string }[] = [
+  { value: "all", label: "All Events" },
+  { value: "stage", label: "Stage Changes" },
+  { value: "mpi", label: "MPI" },
+  { value: "estimate", label: "Estimate" },
+  { value: "photo", label: "Photos" },
+  { value: "note", label: "Notes" },
+  { value: "carfax", label: "CARFAX" },
+  { value: "system", label: "System" },
 ];
+
+function categoryOf(actionType: string): string {
+  if (actionType === "stage_change") return "stage";
+  if (actionType === "comment_added") return "note";
+  if (actionType === "photo_uploaded") return "photo";
+  if (actionType === "carfax_link") return "carfax";
+  if (actionType.startsWith("mpi")) return "mpi";
+  if (actionType.startsWith("estimate") || actionType.startsWith("operation") || actionType.startsWith("work_order") || actionType === "repair_item_done")
+    return "estimate";
+  return "system";
+}
 
 interface Props {
   unitId: string;
   dealerId: string;
   currentStatus: UnitStatus;
+  unit?: Record<string, unknown> | null;
 }
 
-export default function ActivityTab({ unitId, dealerId, currentStatus }: Props) {
-  const { data: activities, isLoading, error } = useUnitActivityLogs(unitId, dealerId);
+export default function ActivityTab({ unitId, dealerId, currentStatus, unit }: Props) {
+  const { data: serverLogs, isLoading, error } = useUnitActivityLogs(unitId, dealerId);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  // Unique users
+  // Real logs if present, else a safe fallback reconstructed from unit fields.
+  const { activities, isSynthetic } = useMemo(() => {
+    const logs = serverLogs ?? [];
+    if (logs.length) return { activities: logs as ActivityLog[], isSynthetic: false };
+    return { activities: buildFallbackActivity(unit, currentStatus, dealerId), isSynthetic: true };
+  }, [serverLogs, unit, currentStatus, dealerId]);
+
+  // Unique users (by name)
   const users = useMemo(() => {
-    if (!activities) return [];
-    const map = new Map<string, string>();
-    activities.forEach((a) => {
-      if (a.user_id && a.profiles) {
-        map.set(a.user_id, a.profiles.full_name || a.profiles.email || a.user_id);
-      }
-    });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+    const set = new Set<string>();
+    activities.forEach((a) => { const n = a.profiles?.full_name; if (n) set.add(n); });
+    return Array.from(set);
   }, [activities]);
 
-  // Filtered
   const filtered = useMemo(() => {
-    if (!activities) return [];
     let result = activities;
     if (selectedStage) result = result.filter((a) => a.stage === selectedStage);
-    if (userFilter !== "all") result = result.filter((a) => a.user_id === userFilter);
-    if (eventTypeFilter !== "all") result = result.filter((a) => a.action_type === eventTypeFilter);
+    if (userFilter !== "all") result = result.filter((a) => a.profiles?.full_name === userFilter);
+    if (categoryFilter !== "all") result = result.filter((a) => categoryOf(a.action_type) === categoryFilter);
     return result;
-  }, [activities, selectedStage, userFilter, eventTypeFilter]);
+  }, [activities, selectedStage, userFilter, categoryFilter]);
 
-  const totalCount = activities?.length ?? 0;
+  const totalCount = activities.length;
 
   if (isLoading) {
     return (
@@ -84,17 +89,22 @@ export default function ActivityTab({ unitId, dealerId, currentStatus }: Props) 
       {/* Pipeline visualization */}
       <ActivityPipelineBar
         currentStatus={currentStatus}
-        activities={activities ?? []}
+        activities={activities}
         selectedStage={selectedStage}
         onSelectStage={setSelectedStage}
       />
 
+      {isSynthetic && totalCount > 0 && (
+        <div className="flex items-start gap-2 text-[11px] text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>Reconstructed from this unit's data — detailed activity logging will appear here as actions are recorded.</span>
+        </div>
+      )}
+
       {/* Filter controls */}
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={selectedStage ?? "all"} onValueChange={(v) => setSelectedStage(v === "all" ? null : v)}>
-          <SelectTrigger className="w-[140px] h-7 text-xs">
-            <SelectValue placeholder="All Stages" />
-          </SelectTrigger>
+          <SelectTrigger className="w-[140px] h-7 text-xs"><SelectValue placeholder="All Stages" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stages</SelectItem>
             {Object.entries(STAGE_META).map(([key, meta]) => (
@@ -105,27 +115,18 @@ export default function ActivityTab({ unitId, dealerId, currentStatus }: Props) 
 
         {users.length > 1 && (
           <Select value={userFilter} onValueChange={setUserFilter}>
-            <SelectTrigger className="w-[140px] h-7 text-xs">
-              <SelectValue placeholder="All Users" />
-            </SelectTrigger>
+            <SelectTrigger className="w-[140px] h-7 text-xs"><SelectValue placeholder="All Users" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Users</SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
+              {users.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
 
-        <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-          <SelectTrigger className="w-[150px] h-7 text-xs">
-            <SelectValue placeholder="Event Type" />
-          </SelectTrigger>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[150px] h-7 text-xs"><SelectValue placeholder="All Events" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Events</SelectItem>
-            {EVENT_TYPES.map((et) => (
-              <SelectItem key={et.value} value={et.value}>{et.label}</SelectItem>
-            ))}
+            {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
           </SelectContent>
         </Select>
 
