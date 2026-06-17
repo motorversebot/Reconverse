@@ -66,8 +66,12 @@ export interface EnrichedUnit extends DashboardUnit {
 }
 
 import { fetchDealerUnits } from "./useDealerData";
+import { listEstimateItems } from "@/lib/estimateItems";
 
-function computeLocalDashboardData(dealerId: string, units: any[]) {
+const DAY_MS = 1000 * 60 * 60 * 24;
+const dayKey = (d: Date) => d.toISOString().split("T")[0];
+
+function computeLocalDashboardData(dealerId: string, units: any[], openReconDollars: number) {
   const activeUnitsList = units.filter(u => !u.is_deleted && u.status !== "sold");
   
   const enrichedUnits: EnrichedUnit[] = activeUnitsList.map(u => {
@@ -115,11 +119,19 @@ function computeLocalDashboardData(dealerId: string, units: any[]) {
   const blockedCount = enrichedUnits.filter(u => u.isOverdue || u.blockers.length > 0).length;
   const estimatesMissingCount = activeUnitsList.filter(u => u.status === "estimate").length;
   const promiseOverdueCount = enrichedUnits.filter(u => u.isPromiseOverdue).length;
-  const avgReconDays = 4.2;
-  
-  const repairUnitsCount = activeUnitsList.filter(u => u.status === "repair" || u.status === "qc").length;
-  const openReconDollars = 5200 + repairUnitsCount * 1450;
-  
+
+  // Real avg recon cycle: completed units' created→done duration; if none done
+  // yet, fall back to the average age of units still in recon. 0 when empty.
+  const completedUnits = units.filter(u => !u.is_deleted && (u.status === "ready" || u.status === "sold"));
+  const cycleSource = completedUnits.length ? completedUnits : activeUnitsList;
+  const avgReconDays = cycleSource.length
+    ? Math.round((cycleSource.reduce((sum, u) => {
+        const end = (u.status === "ready" || u.status === "sold") && u.stage_entered_at
+          ? new Date(u.stage_entered_at).getTime() : Date.now();
+        return sum + (end - new Date(u.created_at).getTime()) / DAY_MS;
+      }, 0) / cycleSource.length) * 10) / 10
+    : 0;
+
   const kpis: DashboardKPIs = {
     activeUnits: activeUnitsCount,
     readyCount,
@@ -181,19 +193,24 @@ function computeLocalDashboardData(dealerId: string, units: any[]) {
     };
   });
   
+  // Real 14-day throughput: "added" by created_at; "completed" by units that
+  // entered Ready/Sold (stage_entered_at) within the day.
+  const addedByDay = new Map<string, number>();
+  const completedByDay = new Map<string, number>();
+  units.filter(u => !u.is_deleted).forEach(u => {
+    if (u.created_at) {
+      const k = dayKey(new Date(u.created_at));
+      addedByDay.set(k, (addedByDay.get(k) ?? 0) + 1);
+    }
+    if ((u.status === "ready" || u.status === "sold") && u.stage_entered_at) {
+      const k = dayKey(new Date(u.stage_entered_at));
+      completedByDay.set(k, (completedByDay.get(k) ?? 0) + 1);
+    }
+  });
   const throughput: any[] = [];
   for (let i = 13; i >= 0; i--) {
-    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const dateStr = date.toISOString().split("T")[0];
-    const daySeed = date.getDate();
-    const added = (daySeed % 3) + (daySeed % 2 === 0 ? 1 : 0);
-    const completed = (daySeed % 4 === 0) ? 2 : (daySeed % 3 === 0 ? 1 : 0);
-    
-    throughput.push({
-      date: dateStr,
-      added,
-      completed,
-    });
+    const dateStr = dayKey(new Date(Date.now() - i * DAY_MS));
+    throughput.push({ date: dateStr, added: addedByDay.get(dateStr) ?? 0, completed: completedByDay.get(dateStr) ?? 0 });
   }
   
   return {
@@ -211,7 +228,19 @@ export function useDashboardData(dealerId?: string) {
     queryFn: async () => {
       if (!dealerId) return null;
       const units = await fetchDealerUnits();
-      return computeLocalDashboardData(dealerId, units);
+      // Real open recon $: sum of estimate grand totals for units that have an
+      // estimate (estimate stage onward). Bounded + best-effort (never throws).
+      const billable = units.filter(
+        (u: any) => !u.is_deleted && ["estimate", "approval", "repair", "qc", "ready"].includes(u.status),
+      );
+      let openReconDollars = 0;
+      try {
+        const totals = await Promise.all(billable.map(async (u: any) => {
+          try { const d = await listEstimateItems(u.id); return d.summary?.grand_total ?? 0; } catch { return 0; }
+        }));
+        openReconDollars = totals.reduce((a, b) => a + (Number(b) || 0), 0);
+      } catch { openReconDollars = 0; }
+      return computeLocalDashboardData(dealerId, units, openReconDollars);
     },
     enabled: !!dealerId,
   });

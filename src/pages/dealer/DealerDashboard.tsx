@@ -226,7 +226,7 @@ export default function DealerDashboard() {
         <KPICard
           label="Recon Pipeline $"
           value={kpis.openReconDollars !== null ? `$${Math.round(kpis.openReconDollars).toLocaleString()}` : "—"}
-          sub={kpis.estimatesMissingCount > 0 ? `${kpis.estimatesMissingCount} missing bills` : "Approved works"}
+          sub="Open estimate value"
           icon={<DollarSign className="h-4 w-4 text-foreground" />}
         />
       </div>
