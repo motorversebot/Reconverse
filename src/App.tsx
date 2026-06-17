@@ -22,6 +22,7 @@ import DealerSettingsPage from "./pages/dealer/DealerSettingsPage";
 import UnitDetailPage from "./pages/dealer/UnitDetailPage";
 import PipelineStagePage from "./pages/dealer/PipelineStagePage";
 import ReportsPage from "./pages/dealer/ReportsPage";
+import MessagesPage from "./pages/dealer/MessagesPage";
 import NotificationsPage from "./pages/dealer/NotificationsPage";
 import NotFound from "./pages/NotFound";
 
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="units/:unitId" element={<UnitDetailPage />} />
               <Route path="recon-lane/:stage" element={<PipelineStagePage />} />
               <Route path="reports" element={<ReportsPage />} />
+              <Route path="messages" element={<MessagesPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="users" element={<DealerUsersPage />} />
               <Route path="settings" element={<DealerSettingsPage />} />
