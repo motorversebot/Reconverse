@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Car, Users, Settings, LogOut, ArrowLeft,
   ChevronLeft, ChevronRight, Menu, BarChart3,
   ClipboardCheck, Calculator, ThumbsUp, Wrench, ShieldCheck, Tag,
-  Layers, Home, Bell, MessageSquare, BookOpen
+  Layers, Home, Bell, MessageSquare
 } from "lucide-react";
 import { NotificationBell } from "@/components/dealer/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 const workspaceItems = [
   { to: "/dealer", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/dealer/units", icon: Car, label: "Units" },
-  { to: "/dealer/research", icon: BookOpen, label: "Research" },
   { to: "/dealer/reports", icon: BarChart3, label: "Reports" },
   { to: "/dealer/messages", icon: MessageSquare, label: "Messages" },
 ];
@@ -35,8 +34,15 @@ const reconLaneItems = [
   { to: "/dealer/recon-lane/ready-for-sale", icon: Tag, label: "Ready for Sale" },
 ];
 
+// Admin-only (managing other users). Settings is intentionally NOT here — it's
+// shown to everyone below, since most of it is per-user (profile, theme,
+// password); its only dealer-wide section (CARFAX) self-gates by role.
 const adminItems = [
   { to: "/dealer/users", icon: Users, label: "Users" },
+];
+
+// Visible to every role.
+const settingsItems = [
   { to: "/dealer/settings", icon: Settings, label: "Settings" },
 ];
 
@@ -185,12 +191,12 @@ function SidebarContent({
           </div>
         )}
 
-        {/* Admin — hidden for Manager and Staff */}
+        {/* Admin (Users) — hidden for Manager and Staff */}
         {showAdmin && (
           <div>
             {!collapsed && (
               <p className="px-5 mb-2 text-[9px] font-mono tracking-widest uppercase text-muted-foreground/45">
-                Admin Settings
+                Admin
               </p>
             )}
             <div className="space-y-0.5">
@@ -200,6 +206,20 @@ function SidebarContent({
             </div>
           </div>
         )}
+
+        {/* Account — Settings, visible to every role */}
+        <div>
+          {!collapsed && (
+            <p className="px-5 mb-2 text-[9px] font-mono tracking-widest uppercase text-muted-foreground/45">
+              Account
+            </p>
+          )}
+          <div className="space-y-0.5">
+            {settingsItems.map((item) => (
+              <SidebarNavItem key={item.to} {...item} collapsed={collapsed} />
+            ))}
+          </div>
+        </div>
       </nav>
 
       {/* Footer */}
