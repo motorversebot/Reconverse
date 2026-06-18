@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Car, Users, Settings, LogOut, ArrowLeft,
   ChevronLeft, ChevronRight, Menu, BarChart3,
   ClipboardCheck, Calculator, ThumbsUp, Wrench, ShieldCheck, Tag,
-  Layers, Home, Bell, MessageSquare
+  Layers, Home, Bell, MessageSquare, BookOpen
 } from "lucide-react";
 import { NotificationBell } from "@/components/dealer/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 const workspaceItems = [
   { to: "/dealer", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/dealer/units", icon: Car, label: "Units" },
+  { to: "/dealer/research", icon: BookOpen, label: "Research" },
   { to: "/dealer/reports", icon: BarChart3, label: "Reports" },
   { to: "/dealer/messages", icon: MessageSquare, label: "Messages" },
 ];
