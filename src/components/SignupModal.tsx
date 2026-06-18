@@ -16,10 +16,19 @@ const SignupModal = ({ open, onOpenChange, onSwitchToLogin }: SignupModalProps) 
   const [fullName, setFullName] = useState("");
   const [shopName, setShopName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const SIGNUP_ERRORS: Record<string, string> = {
+    email_exists: "An account with that email already exists. Try signing in instead.",
+    valid_email_required: "Enter a valid email address.",
+    password_too_short: "Password must be at least 6 characters.",
+    shop_name_required: "Enter your shop or dealership name.",
+    signup_failed: "Something went wrong creating your account. Please try again.",
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,17 +49,16 @@ const SignupModal = ({ open, onOpenChange, onSwitchToLogin }: SignupModalProps) 
         password,
         full_name: fullName.trim(),
         shop_name: shopName.trim(),
+        phone: phone.trim() || undefined,
       }),
     });
     const signUpJ = await signUpRes.json().catch(() => null);
-    const signUpError = (!signUpRes.ok || !signUpJ?.ok)
-      ? new Error(signUpJ?.error || "Signup failed")
-      : null;
+    const rawErr = signUpJ?.error as string | undefined;
 
     setLoading(false);
 
-    if (signUpError) {
-      setError(signUpError.message);
+    if (!signUpRes.ok || !signUpJ?.ok) {
+      setError((rawErr && SIGNUP_ERRORS[rawErr]) || "Signup failed. Please try again.");
       return;
     }
 
@@ -64,6 +72,7 @@ const SignupModal = ({ open, onOpenChange, onSwitchToLogin }: SignupModalProps) 
       setFullName("");
       setShopName("");
       setEmail("");
+      setPhone("");
       setPassword("");
       setError("");
       setSuccess(false);
@@ -86,12 +95,22 @@ const SignupModal = ({ open, onOpenChange, onSwitchToLogin }: SignupModalProps) 
             <div className="text-center py-6">
               <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4" />
               <DialogTitle className="text-xl font-bold text-foreground mb-2">
-                Check Your Email
+                Account Ready
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                We sent a confirmation link to <strong className="text-foreground">{email}</strong>.
-                Click it to activate your account.
+              <p className="text-sm text-muted-foreground mb-6">
+                <strong className="text-foreground">{shopName || "Your shop"}</strong> is set up.
+                Sign in with <strong className="text-foreground">{email}</strong> to start tracking units.
               </p>
+              <Button
+                variant="hero"
+                className="w-full"
+                onClick={() => {
+                  handleClose();
+                  if (onSwitchToLogin) setTimeout(() => onSwitchToLogin(), 200);
+                }}
+              >
+                Sign In
+              </Button>
             </div>
           ) : (
             <>
@@ -137,6 +156,17 @@ const SignupModal = ({ open, onOpenChange, onSwitchToLogin }: SignupModalProps) 
                     placeholder="you@example.com"
                     className="bg-[hsl(var(--glass-bg)/0.5)] border-[hsl(var(--glass-border)/0.1)]"
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="signup-phone" className="text-sm font-medium text-foreground">Phone <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <Input
+                    id="signup-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className="bg-[hsl(var(--glass-bg)/0.5)] border-[hsl(var(--glass-border)/0.1)]"
                   />
                 </div>
                 <div className="space-y-2">
