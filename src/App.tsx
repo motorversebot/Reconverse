@@ -23,6 +23,7 @@ import UnitDetailPage from "./pages/dealer/UnitDetailPage";
 import PipelineStagePage from "./pages/dealer/PipelineStagePage";
 import ReportsPage from "./pages/dealer/ReportsPage";
 import MessagesPage from "./pages/dealer/MessagesPage";
+import RepairResearchPage from "./pages/dealer/RepairResearchPage";
 import NotificationsPage from "./pages/dealer/NotificationsPage";
 import NotFound from "./pages/NotFound";
 
@@ -66,6 +67,7 @@ const App = () => (
             >
               <Route index element={<DealerDashboard />} />
               <Route path="units" element={<DealerUnitsPage />} />
+              <Route path="research" element={<RepairResearchPage />} />
               <Route path="units/:unitId" element={<UnitDetailPage />} />
               <Route path="recon-lane/:stage" element={<PipelineStagePage />} />
               <Route path="reports" element={<ReportsPage />} />
