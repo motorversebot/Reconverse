@@ -7,6 +7,7 @@
  * seed fallback so the page renders before the MC endpoints are live.
  */
 import { useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -40,7 +41,24 @@ export default function RepairResearchPage() {
   const dark = resolvedTheme === "dark";
   const t = dark ? THEMES.dark : THEMES.light;
 
-  const [view, setView] = useState<View>("home");
+  const [params] = useSearchParams();
+  const vehicleId = params.get("vehicle_id") || undefined;
+  // Optional vehicle context passed from the Repair Lane so the tech never
+  // re-selects the vehicle. Used for the header even before the bundle loads.
+  const ctx = {
+    vin: params.get("vin"),
+    year: params.get("year") ? Number(params.get("year")) : null,
+    make: params.get("make"),
+    model: params.get("model"),
+    engine: params.get("engine"),
+    mileage: params.get("mileage") ? Number(params.get("mileage")) : null,
+    ro_number: params.get("ro"),
+    stock: params.get("stock"),
+  };
+  const initialView: View = (["wiring", "labor", "tsb", "notes"] as const)
+    .includes(params.get("tab") as any) ? (params.get("tab") as View) : "home";
+
+  const [view, setView] = useState<View>(initialView);
   const [query, setQuery] = useState("front brake replacement");
   const [filter, setFilter] = useState<string>("all");
   const [fitment, setFitment] = useState<"all" | FitmentLevel>("all");
@@ -48,12 +66,34 @@ export default function RepairResearchPage() {
   const noteForm = useRef<{ pattern: string; term: string; body: string }>({ pattern: "", term: "", body: "" });
 
   const { data: bundle } = useQuery({
-    queryKey: ["repairverse", "research"],
-    queryFn: () => getResearchBundle(),
+    queryKey: ["repairverse", "research", vehicleId ?? "default"],
+    queryFn: () => getResearchBundle(vehicleId),
   });
 
   const b: ResearchBundle | undefined = bundle;
-  const v = b?.vehicle;
+  // Effective vehicle = URL context (from the Repair Lane) layered over the
+  // bundle's vehicle, so the header always reflects the selected unit.
+  const baseV = b?.vehicle;
+  const shortFrom = (yr: any, mk: any, md: any, tr: any) => [yr, mk, md, tr].filter(Boolean).join(" ");
+  const v = baseV
+    ? (() => {
+        const year = ctx.year ?? baseV.year;
+        const make = ctx.make ?? baseV.make;
+        const model = ctx.model ?? baseV.model;
+        const engine = ctx.engine ?? baseV.engine;
+        const short = shortFrom(year, make, model, baseV.trim) || baseV.short;
+        return {
+          ...baseV,
+          vin: ctx.vin ?? baseV.vin,
+          year, make, model, engine,
+          mileage: ctx.mileage ?? baseV.mileage,
+          ro_number: ctx.ro_number ?? baseV.ro_number,
+          stock: ctx.stock ?? baseV.stock,
+          short,
+          full: engine ? `${short} \u00b7 ${engine}` : (baseV.full || short),
+        };
+      })()
+    : baseV;
 
   const conf = (level: FitmentLevel) => {
     const map: Record<FitmentLevel, [string, string]> = { exact: [t.exact, "Exact match"], possible: [t.possible, "Possible match"], generic: [t.generic, "Generic ref"] };
@@ -73,6 +113,32 @@ export default function RepairResearchPage() {
 
   if (!b || !v) {
     return <div style={{ ...css("min-height:60vh;display:flex;align-items:center;justify-content:center;font-size:13px"), color: t.fg3, background: t.bg }}>Loading repair research…</div>;
+  }
+
+  // Clean empty state: the MC endpoint responded, but nothing has been ingested
+  // for this vehicle yet. (Seed fallback is non-empty, so this only triggers on
+  // a real, empty Repairverse response.)
+  const noData = b.available && [b.procedures, b.labor, b.specs, b.dtcs, b.tsbs, b.recalls, b.wiring, b.components, b.maintenance, b.notes].every((a) => !a || a.length === 0);
+  if (noData) {
+    return (
+      <div style={{ ...css("min-height:100%;font-family:'IBM Plex Sans',system-ui,sans-serif"), background: t.bg, color: t.fg }}>
+        <div style={{ ...css("display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid"), borderColor: t.border, background: t.surface }}>
+          <span style={{ ...css("width:20px;height:20px;border-radius:6px;display:inline-block"), background: t.accent }} />
+          <span style={{ ...css("font-weight:700;font-size:14px"), color: t.fg }}>Repairverse</span>
+          {v.short && <span style={{ ...css("font-size:12px;font-weight:600"), color: t.fg2 }}>{v.short}</span>}
+        </div>
+        <div style={css("max-width:560px;margin:0 auto;padding:80px 22px;text-align:center")}>
+          <span style={{ ...css("display:inline-flex;width:46px;height:46px;border-radius:13px;align-items:center;justify-content:center;margin-bottom:18px"), background: t.accentSoft }}>
+            <span style={{ ...css("width:18px;height:18px;border-radius:5px"), background: t.accent }} />
+          </span>
+          <h1 style={{ ...css("font-size:20px;font-weight:700;margin:0 0 8px"), color: t.fg }}>No research yet</h1>
+          <p style={{ ...css("font-size:14px;line-height:1.55;margin:0"), color: t.fg2 }}>
+            No Repairverse data has been ingested for this vehicle yet.
+          </p>
+          {v.vin && <p style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:14px"), color: t.fg3 }}>{v.vin}</p>}
+        </div>
+      </div>
+    );
   }
 
   const proc = b.procedures[activeProc] || b.procedures[0];

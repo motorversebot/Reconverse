@@ -18,7 +18,7 @@ import {
   ArrowLeft, Car, MoreVertical, Archive, ArrowRight,
   ClipboardCheck, FileText, Camera, StickyNote, Activity,
   Calculator, ThumbsUp, Wrench, ShieldCheck, Package, FileDown, Loader2,
-  CalendarIcon, X, Layers,
+  CalendarIcon, X, Layers, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
@@ -116,6 +116,23 @@ function getTabsForStage(status: UnitStatus, staffOnly: boolean) {
         { id: "notes", label: "Notes", icon: StickyNote },
       ];
   }
+}
+
+
+/** Build the Repairverse research deep-link, carrying the selected vehicle's
+ *  context so the technician never has to pick the vehicle again. */
+function repairverseHref(unit: any): string {
+  const p = new URLSearchParams();
+  if (unit?.id) p.set("vehicle_id", String(unit.id));
+  if (unit?.vin) p.set("vin", String(unit.vin));
+  if (unit?.year) p.set("year", String(unit.year));
+  if (unit?.make) p.set("make", String(unit.make));
+  if (unit?.model) p.set("model", String(unit.model));
+  if (unit?.engine) p.set("engine", String(unit.engine));
+  if (unit?.mileage) p.set("mileage", String(unit.mileage));
+  if (unit?.repair_order_number) p.set("ro", String(unit.repair_order_number));
+  if (unit?.stock_number) p.set("stock", String(unit.stock_number));
+  return `/dealer/research?${p.toString()}`;
 }
 
 export default function UnitDetailPage() {
@@ -423,7 +440,21 @@ export default function UnitDetailPage() {
         </TabsContent>
 
         {/* Repair Tab */}
-        <TabsContent value="repair" className="mt-4">
+        <TabsContent value="repair" className="mt-4 space-y-3">
+          {/* Repairverse entry — Repair Lane only links into Repairverse; it
+              never renders wiring/diagrams itself. Shown only with a vehicle. */}
+          {unit?.id && (
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => navigate(repairverseHref(unit))}
+              >
+                <BookOpen className="h-4 w-4" /> Open in Repairverse
+              </Button>
+            </div>
+          )}
           <RepairTasks
             unitId={unit.id}
             dealerId={dealerId}

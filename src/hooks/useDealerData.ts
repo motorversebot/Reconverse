@@ -375,6 +375,8 @@ function mapMcUnit(u: Record<string, unknown>) {
     make: (u.make as string) ?? null,
     model: (u.model as string) ?? null,
     trim: (u.trim as string) ?? null,
+    engine: (u.engine as string) ?? (u.engine_description as string) ?? null,
+    mileage: (u.mileage as number) ?? (u.odometer as number) ?? null,
     color: (u.exterior_color as string) ?? (u.color as string) ?? null,
     vin: (u.vin as string) ?? null,
     stock_number: (u.stock_number as string) ?? null,
