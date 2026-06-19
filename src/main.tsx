@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
+import { installGlobalErrorLogging } from "@/lib/clientErrors";
 
 // Apply persisted theme before render – default is light
 const storedTheme = localStorage.getItem("mv-theme") || "light";
@@ -16,6 +17,8 @@ if (storedTheme === "dark") {
 } else {
   document.documentElement.classList.add("light");
 }
+
+installGlobalErrorLogging();
 
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider>

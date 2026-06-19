@@ -56,7 +56,7 @@ interface InspectionItem {
   status: ItemStatus;
   notes: string | null;
   labor_hours: number | null;
-  inspected_by: string | null;
+  inspected_by: string | number | null;
   updated_at?: string;
 }
 
@@ -525,7 +525,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
                                     </button>
                                   </TooltipTrigger>
                                   <TooltipContent side="top" className="text-xs">
-                                    <div className="flex items-center gap-1.5"><User className="h-3 w-3" /><span>Inspector: {item.inspected_by?.slice(0, 8)}…</span></div>
+                                    <div className="flex items-center gap-1.5"><User className="h-3 w-3" /><span>Inspector: {String(item.inspected_by).slice(0, 8)}…</span></div>
                                     {item.updated_at && (
                                       <div className="flex items-center gap-1.5 mt-0.5"><Clock className="h-3 w-3" /><span>{new Date(item.updated_at).toLocaleString()}</span></div>
                                     )}
