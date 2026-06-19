@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useCurrentDealer, useDealerUnits, useDealerArchivedUnits, fetchDealerUnits } from "@/hooks/useDealerData";
 import { useCreateUnit, useUpdateUnit, useRestoreUnit } from "@/hooks/useDealerActions";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { decodeVinNhtsa } from "@/lib/vinDecode";
 import { runUnitChecks } from "@/lib/unitChecks";
@@ -77,6 +79,11 @@ export default function DealerUnitsPage() {
   const [drawerUnit, setDrawerUnit] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("active");
   const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState("all");
+  const [makeFilter, setMakeFilter] = useState("all");
+  const [minYear, setMinYear] = useState("");
+  const [maxYear, setMaxYear] = useState("");
+  const [promiseAfter, setPromiseAfter] = useState<Date | undefined>(undefined);
   const [sortKey, setSortKey] = useState<string>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [modalOpen, setModalOpen] = useState(false);
@@ -95,12 +102,22 @@ export default function DealerUnitsPage() {
 
   const filterUnits = (list: any[] | undefined) => list?.filter((u) => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch = !q ||
       (u.vin?.toLowerCase().includes(q)) ||
       (u.stock_number?.toLowerCase().includes(q)) ||
       (u.make?.toLowerCase().includes(q)) ||
-      (u.model?.toLowerCase().includes(q))
-    );
+      (u.model?.toLowerCase().includes(q));
+    if (!matchesSearch) return false;
+    if (stageFilter !== "all" && u.status !== stageFilter) return false;
+    if (makeFilter !== "all" && (u.make ?? "") !== makeFilter) return false;
+    if (minYear && Number(u.year || 0) < Number(minYear)) return false;
+    if (maxYear && Number(u.year || 0) > Number(maxYear)) return false;
+    if (promiseAfter) {
+      if (!u.promise_date) return false;
+      const pd = new Date(String(u.promise_date).length <= 10 ? `${u.promise_date}T00:00:00` : u.promise_date);
+      if (isNaN(pd.getTime()) || pd < promiseAfter) return false;
+    }
+    return true;
   });
 
   const toggleSort = (key: string) => {
@@ -129,6 +146,11 @@ export default function DealerUnitsPage() {
 
   const filtered = sortUnits(filterUnits(units));
   const filteredArchived = filterUnits(archivedUnits);
+
+  const makeOptions = Array.from(new Set((units ?? []).map((u: any) => u.make).filter(Boolean))).sort() as string[];
+  const hasActiveFilters = !!search || stageFilter !== "all" || makeFilter !== "all" || !!minYear || !!maxYear || !!promiseAfter;
+  const shownCount = (activeTab === "archived" ? filteredArchived : filtered)?.length ?? 0;
+  const clearFilters = () => { setSearch(""); setStageFilter("all"); setMakeFilter("all"); setMinYear(""); setMaxYear(""); setPromiseAfter(undefined); };
 
   const SortHeader = ({ label, column }: { label: string; column: string }) => (
     <TableHead>
@@ -401,8 +423,9 @@ export default function DealerUnitsPage() {
         )}
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <div className="relative w-full sm:w-72">
+      {/* Horizontal filter bar */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative w-full sm:w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search VIN, stock #, make, model…"
@@ -411,6 +434,54 @@ export default function DealerUnitsPage() {
             className="pl-9"
           />
         </div>
+
+        {/* Stage */}
+        <Select value={stageFilter} onValueChange={setStageFilter}>
+          <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="All Stages" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Stages</SelectItem>
+            {ALL_STATUSES.map((st) => <SelectItem key={st} value={st}>{STAGE_META[st].label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {/* Make */}
+        <Select value={makeFilter} onValueChange={setMakeFilter}>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="All Makes" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Makes</SelectItem>
+            {makeOptions.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {/* Year range */}
+        <div className="flex items-center gap-1.5">
+          <Input type="number" inputMode="numeric" placeholder="Min yr" value={minYear} onChange={(e) => setMinYear(e.target.value)} className="w-[5.5rem]" />
+          <span className="text-xs text-muted-foreground">–</span>
+          <Input type="number" inputMode="numeric" placeholder="Max yr" value={maxYear} onChange={(e) => setMaxYear(e.target.value)} className="w-[5.5rem]" />
+        </div>
+
+        {/* Promise after */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="justify-start gap-2 font-normal">
+              <CalendarIcon className="h-4 w-4" />
+              {promiseAfter ? format(promiseAfter, "MMM d, yyyy") : "Promise after"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={promiseAfter} onSelect={setPromiseAfter} initialFocus />
+          </PopoverContent>
+        </Popover>
+
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={clearFilters}>
+            <X className="h-3.5 w-3.5" /> Clear
+          </Button>
+        )}
+
+        {hasActiveFilters && (
+          <span className="text-xs font-mono text-muted-foreground sm:ml-auto">{shownCount} shown</span>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
