@@ -77,7 +77,7 @@ export default function ReconStepper({
             const step = i + 1;
             const isActive = step === activeStep;
             return (
-              <StepperItem key={s.status} step={step} completed={step < activeStep}>
+              <StepperItem key={s.status} step={step} completed={step < activeStep} className="flex-1 last:flex-none min-w-0">
                 <StepperTrigger className="relative" tabIndex={-1}>
                   {/* pulsing ring on the current step */}
                   {isActive && (
