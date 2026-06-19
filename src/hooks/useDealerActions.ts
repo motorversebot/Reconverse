@@ -89,7 +89,12 @@ export function useCreateUnit() {
       });
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.ok) throw new Error(j?.error || "Couldn't create unit");
-      return j.data.unit;
+      // MC returns the created row directly at j.data (INSERT ... RETURNING *);
+      // some endpoints wrap it as j.data.unit. Tolerate both so the caller
+      // always receives the unit object (was reading j.data.unit -> undefined
+      // -> "Cannot read properties of undefined (reading 'id')" after a
+      // successful create).
+      return (j.data?.unit ?? j.data) as Record<string, unknown>;
     },
     onSuccess: () => invalidate("dealer-units", "dashboard-command-center"),
   });

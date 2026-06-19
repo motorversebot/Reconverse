@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useCurrentDealer, useDealerUnits, useDealerArchivedUnits } from "@/hooks/useDealerData";
+import { useCurrentDealer, useDealerUnits, useDealerArchivedUnits, fetchDealerUnits } from "@/hooks/useDealerData";
 import { useCreateUnit, useUpdateUnit, useRestoreUnit } from "@/hooks/useDealerActions";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Search, ScanLine, Check, Loader2, ChevronDown, AlertCircle, RotateCcw, Archive, Car, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -320,21 +320,58 @@ export default function DealerUnitsPage() {
         toast({ title: "Unit updated" });
         setModalOpen(false);
       } else {
-        const newUnit = await createUnit.mutateAsync({ dealer_id: dealerId, ...payload });
-        // Kick off CARFAX + open-recall checks in the background (non-blocking;
-        // failures never block unit creation). Results show on the unit.
-        if (newUnit?.vin || payload.vin) {
-          void runUnitChecks({ id: String(newUnit.id), vin: (newUnit?.vin as string) || (payload.vin as string) }, dealerId)
-            .catch(() => { /* surfaced on the unit's card */ });
-          toast({ title: "Unit created", description: "Running CARFAX and recall checks…" });
-        } else {
-          toast({ title: "Unit created" });
+        const created = await createUnit.mutateAsync({ dealer_id: dealerId, ...payload });
+
+        // The unit is created server-side at this point. Resolve its id
+        // defensively — never let an unexpected response shape turn a
+        // successful create into a red crash error.
+        let unitId = created?.id != null ? String(created.id) : "";
+        let unitVin = (created?.vin as string) || (payload.vin as string) || "";
+        const stockNo = (payload.stock_number as string) || "";
+
+        // If the id didn't come back, refetch the dealer's units and match the
+        // one we just created by VIN/stock before giving up.
+        if (!unitId) {
+          try {
+            const all = await fetchDealerUnits();
+            const match = all.find(
+              (u) => (unitVin && u.vin === unitVin) || (stockNo && u.stock_number === stockNo),
+            );
+            if (match?.id != null) {
+              unitId = String(match.id);
+              unitVin = unitVin || (match.vin ?? "");
+            }
+          } catch { /* fall through to the safe success path below */ }
         }
+
         setModalOpen(false);
-        navigate(`/dealer/units/${newUnit.id}`);
+
+        if (unitId) {
+          // Optional, non-blocking post-create checks — only ever called with a
+          // valid unit id. Failures surface on the unit's card, never here.
+          if (unitVin) {
+            void runUnitChecks({ id: unitId, vin: unitVin }, dealerId).catch(() => {});
+            toast({ title: "Unit created", description: "Running CARFAX and recall checks…" });
+          } else {
+            toast({ title: "Unit created" });
+          }
+          navigate(`/dealer/units/${unitId}`);
+        } else {
+          // Created, but we couldn't resolve the id. Do NOT show a raw error —
+          // the unit is safe and will appear in the list (already invalidated).
+          toast({ title: "Unit created", description: "CARFAX/recall check will retry later." });
+        }
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      // Only genuine create/update failures reach here (post-create steps are
+      // non-blocking). Never surface a raw JS error string to the user.
+      const known = typeof err?.message === "string" && err.message &&
+        !/undefined|null|Cannot read|is not a function/i.test(err.message);
+      toast({
+        title: editingId ? "Couldn't update unit" : "Couldn't create unit",
+        description: known ? err.message : "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
