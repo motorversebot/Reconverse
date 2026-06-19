@@ -26,6 +26,7 @@ import { useArchiveUnit, useUpdateUnit, useMoveUnitStage } from "@/hooks/useDeal
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import StageProgressBar from "@/components/dealer/StageProgressBar";
+import ReconStepper from "@/components/dealer/ReconStepper";
 import { hoursInStage, formatAgingDuration, agingColor, AGING_COLORS, AGING_BG } from "@/hooks/useStageAging";
 import InspectionChecklist from "@/components/dealer/InspectionChecklist";
 import EditableIntakeCard from "@/components/dealer/EditableIntakeCard";
@@ -336,6 +337,9 @@ export default function UnitDetailPage() {
           </div>
         );
       })()}
+
+      {/* Recon pipeline stepper + live time-in-stage timer */}
+      <ReconStepper status={currentStatus} since={(unit as any).stage_entered_at || (unit as any).created_at} />
 
       {/* Promise Date (admin/manager only) */}
       {!staffOnly && currentStatus !== "sold" && (
