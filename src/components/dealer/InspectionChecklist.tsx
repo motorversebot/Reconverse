@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useDealerMembers } from "@/hooks/useDealerData";
 import { uploadUnitPhoto } from "@/lib/photos";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -111,6 +112,12 @@ const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
 
 export default function InspectionChecklist({ unitId, dealerId, readOnly = false }: Props) {
   const { toast } = useToast();
+  const { data: members } = useDealerMembers(dealerId);
+  const techLabel = (id: string | number | null): string => {
+    if (id == null || id === "") return "Unassigned";
+    const m = (members as any[] | undefined)?.find((x) => String(x.user_id) === String(id));
+    return m?.profiles?.full_name || m?.name || `#${id}`;
+  };
   const queryClient = useQueryClient();
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [noteValues, setNoteValues] = useState<Record<string, string>>({});
@@ -544,7 +551,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
                                     </button>
                                   </TooltipTrigger>
                                   <TooltipContent side="top" className="text-xs">
-                                    <div className="flex items-center gap-1.5"><User className="h-3 w-3" /><span>Inspector: {String(item.inspected_by).slice(0, 8)}…</span></div>
+                                    <div className="flex items-center gap-1.5"><User className="h-3 w-3" /><span>Assigned Tech: {techLabel(item.inspected_by)}</span></div>
                                     {item.updated_at && (
                                       <div className="flex items-center gap-1.5 mt-0.5"><Clock className="h-3 w-3" /><span>{new Date(item.updated_at).toLocaleString()}</span></div>
                                     )}
