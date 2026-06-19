@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { uploadUnitPhoto } from "@/lib/photos";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -118,6 +119,8 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
   // Per-item working state for the fail/repair detail panel (comments/labor/photo).
   const [laborValues, setLaborValues] = useState<Record<string, string>>({});
   const [photoPreviews, setPhotoPreviews] = useState<Record<string, string | null>>({});
+  const photoFiles = useRef<Record<string, File>>({});
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
   const { data: savedItems, isLoading } = useQuery({
     queryKey: ["inspection-items", unitId],
@@ -266,7 +269,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
     }
   };
 
-  const saveItemDetail = (item: InspectionItem) => {
+  const saveItemDetail = async (item: InspectionItem) => {
     const key = `${item.category}::${item.item_name}`;
     const note = noteValues[key] ?? item.notes ?? "";
     const laborStr = laborValues[key] ?? (item.labor_hours != null ? String(item.labor_hours) : "");
@@ -277,12 +280,28 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
       notes: note || null,
       labor_hours: Number.isFinite(labor as number) ? labor : null,
     });
-    setExpandedNotes((prev) => ({ ...prev, [key]: false }));
-    toast({ title: "Item updated" });
+
+    // Upload the picked photo (if any) to MC so it persists + shows in Estimate.
+    const file = photoFiles.current[key];
+    if (file) {
+      setUploadingKey(key);
+      try {
+        await uploadUnitPhoto(unitId, file, { context: "mpi", category: item.category, item_name: item.item_name });
+        delete photoFiles.current[key];
+        toast({ title: "Added", description: "Photo uploaded — it'll show on the Estimate." });
+      } catch {
+        toast({ title: "Note saved", description: "Photo didn't upload — tap Add again to retry.", variant: "destructive" });
+      } finally {
+        setUploadingKey(null);
+      }
+    } else {
+      toast({ title: "Added", description: note ? "Note & details saved." : "Saved." });
+    }
   };
 
   const onPhotoPick = (key: string, file: File | null) => {
     if (!file) return;
+    photoFiles.current[key] = file;
     const url = URL.createObjectURL(file);
     setPhotoPreviews((prev) => ({ ...prev, [key]: url }));
   };
@@ -597,7 +616,7 @@ export default function InspectionChecklist({ unitId, dealerId, readOnly = false
                                     </button>
                                   </div>
                                 )}
-                                <Button size="sm" className="h-9 text-xs ml-auto" onClick={() => saveItemDetail(item)}>Save</Button>
+                                <Button size="sm" className="h-9 text-xs ml-auto gap-1.5" disabled={uploadingKey === key} onClick={() => saveItemDetail(item)}>{uploadingKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}Add</Button>
                               </div>
                               {photo && <p className="text-[10px] text-muted-foreground">Photo attached for this session — server photo storage pending MC support.</p>}
                             </div>
