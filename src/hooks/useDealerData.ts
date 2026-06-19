@@ -387,6 +387,7 @@ function mapMcUnit(u: Record<string, unknown>) {
     promise_date: (u.promise_date as string) ?? null,
     notes: (u.notes as string) ?? null,
     assigned_technician: (u.assigned_to_name as string) ?? (u.technician_name as string) ?? null,
+    assigned_to: (u.assigned_to as number) ?? null,
     repair_order_number: (u.repair_order_number as string) ?? (u.ro_number as string) ?? null,
     tag_number: (u.tag_number as string) ?? null,
     // Automatic CARFAX + recall check results (for badges + cards).

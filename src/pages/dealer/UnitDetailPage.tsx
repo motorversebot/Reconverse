@@ -18,10 +18,10 @@ import {
   ArrowLeft, Car, MoreVertical, Archive, ArrowRight,
   ClipboardCheck, FileText, Camera, StickyNote, Activity,
   Calculator, ThumbsUp, Wrench, ShieldCheck, Package, FileDown, Loader2,
-  CalendarIcon, X, Layers,
+  CalendarIcon, X, Layers, UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
+import { useCurrentDealer, useDealerUnits, useDealerMembers } from "@/hooks/useDealerData";
 import { useArchiveUnit, useUpdateUnit, useMoveUnitStage } from "@/hooks/useDealerActions";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -131,6 +131,16 @@ export default function UnitDetailPage() {
   const updateUnit = useUpdateUnit();
   const moveStage = useMoveUnitStage();
   const { toast } = useToast();
+  const { data: members } = useDealerMembers(dealerId);
+  const assignTech = async (userId: number | null, name: string) => {
+    if (!unit) return;
+    try {
+      await updateUnit.mutateAsync({ id: unit.id, assigned_to: userId } as any);
+      toast({ title: userId ? `Assigned to ${name}` : "Technician unassigned" });
+    } catch {
+      toast({ title: "Couldn't update assignment", variant: "destructive" });
+    }
+  };
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -298,6 +308,34 @@ export default function UnitDetailPage() {
                         {s === currentStatus && <span className="ml-auto text-[10px] text-muted-foreground">current</span>}
                       </DropdownMenuItem>
                     ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              {/* Assign / reassign technician — managers and above only */}
+              {showAdvanceButton && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <UserCog className="h-4 w-4 mr-2" /> Assign Tech
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+                    <DropdownMenuItem disabled={updateUnit.isPending} onClick={() => assignTech(null, "")}>
+                      <span className="text-muted-foreground">Unassigned</span>
+                      {!(unit as any).assigned_to && <span className="ml-auto text-[10px] text-muted-foreground">current</span>}
+                    </DropdownMenuItem>
+                    {(members ?? []).filter((m: any) => m.is_active !== false).length === 0 && (
+                      <DropdownMenuItem disabled>No team members</DropdownMenuItem>
+                    )}
+                    {(members ?? []).filter((m: any) => m.is_active !== false).map((m: any) => {
+                      const isCurrent = String(m.user_id) === String((unit as any).assigned_to);
+                      const label = m.profiles?.full_name || m.profiles?.email || `#${m.user_id}`;
+                      return (
+                        <DropdownMenuItem key={m.user_id} disabled={updateUnit.isPending} onClick={() => assignTech(Number(m.user_id), label)}>
+                          <span className="truncate">{label}</span>
+                          {m.role && <span className="ml-2 text-[10px] text-muted-foreground capitalize shrink-0">{String(m.role).replace(/_/g, " ")}</span>}
+                          {isCurrent && <span className="ml-auto text-[10px] text-primary shrink-0">current</span>}
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
               )}
