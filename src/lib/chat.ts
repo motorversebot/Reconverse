@@ -85,6 +85,12 @@ export async function sendMessage(channelId: number, payload: { body: string; un
   if (!r.ok) throw new Error(r.error || "send_failed");
 }
 
+/** Soft-delete a chat (channel/group/dm). Server gates to creator or owner. */
+export async function deleteChannel(channelId: number): Promise<void> {
+  const r = await call(`/channels/${channelId}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(r.error || "delete_failed");
+}
+
 /** Mark a channel read (clears its unread count) for the current user. */
 export async function markChannelRead(channelId: number): Promise<void> {
   await call(`/channels/${channelId}/read`, { method: "POST" });

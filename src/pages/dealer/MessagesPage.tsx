@@ -8,11 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentDealer, useDealerMembers, useDealerUnits } from "@/hooks/useDealerData";
 import {
-  listChannels, createChannel, openDm, listMessages, sendMessage, channelTitle, markChannelRead,
+  listChannels, createChannel, openDm, listMessages, sendMessage, channelTitle, markChannelRead, deleteChannel,
   type ChatChannel, type ChatMessage,
 } from "@/lib/chat";
 import {
-  MessageSquare, Plus, Send, ArrowLeft, Hash, Users, AtSign, Car, X, Loader2,
+  MessageSquare, Plus, Send, ArrowLeft, Hash, Users, AtSign, Car, X, Loader2, Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -29,6 +29,8 @@ export default function MessagesPage() {
 
   const [activeId, setActiveId] = useState<number | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ChatChannel | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const channelsQ = useQuery({
     queryKey: ["chat-channels", dealerId],
@@ -46,6 +48,28 @@ export default function MessagesPage() {
     try { await markChannelRead(id); } catch { /* best-effort */ }
     qc.invalidateQueries({ queryKey: ["chat-channels", dealerId] });
     qc.invalidateQueries({ queryKey: ["notifications"] });
+  };
+
+  const doDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteChannel(deleteTarget.id);
+      if (activeId === deleteTarget.id) setActiveId(null);
+      toast({ title: "Chat deleted" });
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ["chat-channels", dealerId] });
+    } catch (e: any) {
+      toast({
+        title: "Couldn't delete chat",
+        description: e?.message === "not_allowed"
+          ? "Only the chat's creator or a dealer owner can delete it."
+          : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (!available) {
@@ -74,24 +98,37 @@ export default function MessagesPage() {
             <p className="p-4 text-xs text-muted-foreground">No conversations yet. Tap “New” to start one.</p>
           )}
           {channels.map((c) => (
-            <button
+            <div
               key={c.id}
-              onClick={() => openChannel(c.id)}
-              className={`w-full text-left px-3 py-2.5 border-b border-border/40 hover:bg-muted/40 transition-colors ${activeId === c.id ? "bg-muted/50" : ""}`}
+              className={`relative group/row border-b border-border/40 ${activeId === c.id ? "bg-muted/50" : ""}`}
             >
-              <div className="flex items-center gap-2">
-                {c.kind === "dm" ? <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <Hash className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                <span className={`text-sm truncate flex-1 ${c.unread ? "font-bold text-foreground" : "font-medium text-foreground"}`}>{channelTitle(c, selfId)}</span>
-                {!!c.unread && c.unread > 0 && activeId !== c.id && (
-                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
-                    {c.unread > 99 ? "99+" : c.unread}
-                  </span>
+              <button
+                onClick={() => openChannel(c.id)}
+                className="w-full text-left px-3 py-2.5 pr-9 hover:bg-muted/40 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  {c.kind === "dm" ? <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <Hash className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                  <span className={`text-sm truncate flex-1 ${c.unread ? "font-bold text-foreground" : "font-medium text-foreground"}`}>{channelTitle(c, selfId)}</span>
+                  {!!c.unread && c.unread > 0 && activeId !== c.id && (
+                    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shrink-0">
+                      {c.unread > 99 ? "99+" : c.unread}
+                    </span>
+                  )}
+                </div>
+                {c.last_message && (
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5 pl-5.5">{c.last_message.body}</p>
                 )}
-              </div>
-              {c.last_message && (
-                <p className="text-[11px] text-muted-foreground truncate mt-0.5 pl-5.5">{c.last_message.body}</p>
-              )}
-            </button>
+              </button>
+              <button
+                type="button"
+                aria-label="Delete chat"
+                title="Delete chat"
+                onClick={(e) => { e.stopPropagation(); setDeleteTarget(c); }}
+                className="absolute right-1.5 top-2 p-1.5 rounded-md text-muted-foreground/50 transition hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover/row:opacity-100 focus:opacity-100"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ))}
         </Card>
 
@@ -115,6 +152,24 @@ export default function MessagesPage() {
           )}
         </div>
       </div>
+
+      {/* Delete-chat confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this chat?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {deleteTarget ? `"${channelTitle(deleteTarget, selfId)}" will be removed for everyone. This can't be undone from here.` : ""}
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={doDelete} disabled={deleting} className="gap-2">
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {newOpen && (
         <NewConversationDialog
