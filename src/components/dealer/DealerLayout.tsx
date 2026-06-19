@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useCurrentDealer } from "@/hooks/useDealerData";
+import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
 import { setActiveDealerId } from "@/lib/api";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { canManageUsers, canAccessReconLane } from "@/lib/permissions";
+import { SLUG_TO_STATUS } from "@/lib/pipeline";
 import {
   LayoutDashboard, Car, Users, Settings, LogOut, ArrowLeft,
   ChevronLeft, ChevronRight, Menu, BarChart3,
@@ -47,9 +48,9 @@ const settingsItems = [
 ];
 
 function SidebarNavItem({
-  to, icon: Icon, label, end, collapsed,
+  to, icon: Icon, label, end, collapsed, count,
 }: {
-  to: string; icon: React.ElementType; label: string; end?: boolean; collapsed: boolean;
+  to: string; icon: React.ElementType; label: string; end?: boolean; collapsed: boolean; count?: number;
 }) {
   const inner = (
     <NavLink
@@ -67,8 +68,20 @@ function SidebarNavItem({
     >
       {({ isActive }: { isActive: boolean }) => (
         <>
-          <Icon className={cn("shrink-0 h-[15px] w-[15px] transition-transform", isActive ? "text-foreground" : "text-muted-foreground/60 group-hover:text-foreground")} />
+          <span className="relative flex shrink-0">
+            <Icon className={cn("h-[15px] w-[15px] transition-transform", isActive ? "text-foreground" : "text-muted-foreground/60 group-hover:text-foreground")} />
+            {collapsed && !!count && count > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-foreground px-1 text-[8px] font-bold leading-none text-background">
+                {count > 99 ? "99+" : count}
+              </span>
+            )}
+          </span>
           {!collapsed && <span>{label}</span>}
+          {!collapsed && !!count && count > 0 && (
+            <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-foreground px-1.5 text-[10px] font-bold leading-none text-background">
+              {count > 99 ? "99+" : count}
+            </span>
+          )}
         </>
       )}
     </NavLink>
@@ -97,6 +110,19 @@ function SidebarContent({
   const qc = useQueryClient();
   const role = membership?.role as string | undefined;
   const memberships = membership?.memberships ?? [];
+
+  // Per-stage active-unit counts for the Recon Lane nav badges.
+  const dealerId = membership?.dealer_id;
+  const { data: laneUnits } = useDealerUnits(dealerId);
+  const stageCounts = (laneUnits ?? []).reduce<Record<string, number>>((acc, u: any) => {
+    if (u?.status) acc[u.status] = (acc[u.status] || 0) + 1;
+    return acc;
+  }, {});
+  const laneCount = (to: string): number => {
+    const slug = to.split("/").pop() || "";
+    const status = SLUG_TO_STATUS[slug];
+    return status ? (stageCounts[status] || 0) : 0;
+  };
 
   const switchDealer = (dealerId: string) => {
     if (!dealerId || dealerId === membership?.dealer_id) return;
@@ -185,7 +211,7 @@ function SidebarContent({
             )}
             <div className="space-y-0.5">
               {reconLaneItems.map((item) => (
-                <SidebarNavItem key={item.to} {...item} collapsed={collapsed} />
+                <SidebarNavItem key={item.to} {...item} collapsed={collapsed} count={laneCount(item.to)} />
               ))}
             </div>
           </div>
