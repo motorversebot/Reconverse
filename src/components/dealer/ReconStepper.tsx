@@ -37,17 +37,11 @@ function StageTimer({ since }: { since?: string | null }) {
       {cells.map((c, i) => (
         <div key={c.label} className="flex items-start gap-1.5">
           <div className="flex flex-col items-center min-w-[1.6rem]">
-            <span className="font-mono tabular-nums text-sm font-bold text-foreground leading-none">
-              {pad(c.v)}
-            </span>
-            <span className="mt-1 text-[7px] font-mono uppercase tracking-[0.12em] text-muted-foreground/70">
-              {c.label}
-            </span>
+            <span className="font-mono tabular-nums text-sm font-bold text-foreground leading-none">{pad(c.v)}</span>
+            <span className="mt-1 text-[7px] font-mono uppercase tracking-[0.12em] text-muted-foreground/70">{c.label}</span>
           </div>
           {i < cells.length - 1 && (
-            <span className="font-mono text-sm font-bold leading-none text-muted-foreground/30 animate-pulse">
-              :
-            </span>
+            <span className="font-mono text-sm font-bold leading-none text-muted-foreground/30 animate-pulse">:</span>
           )}
         </div>
       ))}
@@ -57,8 +51,9 @@ function StageTimer({ since }: { since?: string | null }) {
 
 /**
  * Recon pipeline stepper + live "time in current stage" timer.
- * Display-only: controlled to the unit's current stage, so clicking a step does
- * not change the unit's lane (stage moves stay gated elsewhere).
+ * Steps are spread evenly across the full width (labels sit below the
+ * indicators, out of flow, so every step takes equal width with equal connector
+ * lines). Display-only: controlled to the unit's current stage.
  */
 export default function ReconStepper({
   status,
@@ -76,25 +71,33 @@ export default function ReconStepper({
         orientation="horizontal"
         indicators={{ completed: <Check className="size-3" /> }}
       >
-        <StepperNav className="gap-1 overflow-x-auto pb-1">
+        {/* pb leaves room for the absolutely-positioned labels below each step */}
+        <StepperNav className="w-full pb-7">
           {STAGES.map((s, i) => {
             const step = i + 1;
+            const isActive = step === activeStep;
             return (
               <StepperItem key={s.status} step={step} completed={step < activeStep}>
-                <StepperTrigger className="gap-2 px-1" tabIndex={-1}>
+                <StepperTrigger className="relative" tabIndex={-1}>
+                  {/* pulsing ring on the current step */}
+                  {isActive && (
+                    <span className="pointer-events-none absolute left-0 top-0 size-6 rounded-full bg-primary/30 animate-ping" />
+                  )}
                   <StepperIndicator
-                    className="size-6 border text-[11px] font-semibold
+                    className="relative z-10 size-6 border text-[11px] font-semibold transition-all duration-300
                       data-[state=inactive]:bg-muted data-[state=inactive]:text-muted-foreground/70 data-[state=inactive]:border-border
-                      data-[state=active]:border-primary data-[state=active]:ring-2 data-[state=active]:ring-primary/20
+                      data-[state=active]:border-primary
                       data-[state=completed]:border-primary"
                   >
                     {step}
                   </StepperIndicator>
-                  <StepperTitle className="hidden lg:inline whitespace-nowrap text-xs data-[state=inactive]:text-muted-foreground data-[state=active]:text-foreground data-[state=active]:font-semibold">
+                  <StepperTitle className="absolute left-1/2 top-8 -translate-x-1/2 hidden whitespace-nowrap text-[10px] md:block data-[state=inactive]:text-muted-foreground data-[state=active]:font-semibold data-[state=active]:text-foreground">
                     {s.label}
                   </StepperTitle>
                 </StepperTrigger>
-                {i < STAGES.length - 1 && <StepperSeparator className="bg-border" />}
+                {i < STAGES.length - 1 && (
+                  <StepperSeparator className="mx-1.5 bg-border transition-colors duration-500" />
+                )}
               </StepperItem>
             );
           })}
