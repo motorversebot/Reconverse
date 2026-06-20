@@ -348,11 +348,6 @@ export function DealerLayout() {
             R
           </div>
           <span className="font-mono font-bold text-sm text-foreground flex-1 tracking-widest uppercase">Reconverse</span>
-          <Link to="/dealer/research">
-            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-muted/10" aria-label="Repairverse">
-              <Wrench className="h-5 w-5" />
-            </Button>
-          </Link>
           <NotificationBell />
         </header>
         <main className="flex-1 overflow-auto">
@@ -378,11 +373,6 @@ export function DealerLayout() {
         <header className="h-14 shrink-0 flex items-center justify-between px-6 bg-background/55 backdrop-blur-xl border-b border-border/20 z-20">
           <Breadcrumbs />
           <div className="flex items-center gap-4">
-            <Link to="/dealer/research">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Wrench className="h-4 w-4" /> Repairverse
-              </Button>
-            </Link>
             <NotificationBell />
           </div>
         </header>
