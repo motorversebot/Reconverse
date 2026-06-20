@@ -196,6 +196,15 @@ export default function UnitDetailPage() {
 
   const title = [unit.year, unit.make, unit.model].filter(Boolean).join(" ") || "Untitled Unit";
 
+  const openRepairverse = () => {
+    const q = new URLSearchParams();
+    if (unit.vin) q.set("vin", unit.vin);
+    if (unit.year) q.set("year", String(unit.year));
+    if (unit.make) q.set("make", unit.make);
+    if (unit.model) q.set("model", unit.model);
+    navigate(`/dealer/research?${q.toString()}`);
+  };
+
   const handleAdvanceStage = async () => {
     if (!nextStatus) return;
     try {
@@ -287,6 +296,9 @@ export default function UnitDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={openRepairverse}>
+                <Wrench className="h-4 w-4 mr-2" /> Repairverse
+              </DropdownMenuItem>
               <DropdownMenuItem className="sm:hidden" onClick={handleExportPdf} disabled={exporting}>
                 <FileDown className="h-4 w-4 mr-2" /> Export PDF
               </DropdownMenuItem>

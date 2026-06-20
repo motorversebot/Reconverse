@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Search } from "lucide-react";
+import { Eye, Search, Wrench } from "lucide-react";
 import { OpenRecallBadge } from "@/components/dealer/OpenRecallBadge";
 import { listRepairTasks } from "@/lib/repairTasks";
 import { useCurrentDealer, useDealerUnits } from "@/hooks/useDealerData";
@@ -72,6 +72,9 @@ export default function PipelineStagePage() {
         <Badge variant="outline" className="ml-2 text-xs font-mono">
           {filtered.length}
         </Badge>
+        <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={() => navigate("/dealer/research")}>
+          <Wrench className="h-4 w-4" /> Repairverse
+        </Button>
       </div>
 
       <div className="relative w-full sm:w-72">

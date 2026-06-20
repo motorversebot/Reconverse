@@ -7,6 +7,8 @@
  * seed fallback so the page renders before the MC endpoints are live.
  */
 import { useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import RepairverseLanding from "@/components/dealer/RepairverseLanding";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -47,9 +49,12 @@ export default function RepairResearchPage() {
   const [activeProc, setActiveProc] = useState(0);
   const noteForm = useRef<{ pattern: string; term: string; body: string }>({ pattern: "", term: "", body: "" });
 
+  const [searchParams] = useSearchParams();
+  const vehicleId = searchParams.get("vehicle_id");
   const { data: bundle } = useQuery({
-    queryKey: ["repairverse", "research"],
-    queryFn: () => getResearchBundle(),
+    queryKey: ["repairverse", "research", vehicleId],
+    queryFn: () => getResearchBundle(vehicleId ?? undefined),
+    enabled: !!vehicleId,
   });
 
   const b: ResearchBundle | undefined = bundle;
@@ -70,6 +75,8 @@ export default function RepairResearchPage() {
 
   const runSearch = (q: string) => { if (!q.trim()) return; setQuery(q); setFilter("all"); setView("results"); };
   const onKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") runSearch(query); };
+
+  if (!vehicleId) return <RepairverseLanding />;
 
   if (!b || !v) {
     return <div style={{ ...css("min-height:60vh;display:flex;align-items:center;justify-content:center;font-size:13px"), color: t.fg3, background: t.bg }}>Loading repair research…</div>;
