@@ -364,12 +364,23 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
     return t;
   };
   const procPath = (p: RVProcedure) => segs(p.system).slice(0, -1).join(" › ");
-  push("Procedures", b.procedures.filter(p => hit(p.title) || hit(p.summary || "") || hit(p.system || ""))
-    .slice().sort((a, b2) => procRank(b2) - procRank(a))
-    .map(p => ({
-      title: procTitle(p), summary: procPath(p) || p.summary || "", fitment: p.fitment_level, source: p.source || "—",
-      meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
-    })));
+  const procItem = (p: RVProcedure): ResultItem => ({
+    title: procTitle(p), summary: procPath(p) || p.summary || "", fitment: p.fitment_level, source: p.source || "—",
+    meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
+  });
+  const procMatches = b.procedures.filter(p => hit(p.title) || hit(p.summary || "") || hit(p.system || ""));
+  const bySys: Record<string, RVProcedure[]> = {};
+  const flatProcs: RVProcedure[] = [];
+  for (const p of procMatches) {
+    const parts = segs(p.system);
+    const sys = (parts[0] || "").replace(/&amp;/g, "&").trim();
+    if (sys && parts.length > 1) (bySys[sys] = bySys[sys] || []).push(p);
+    else flatProcs.push(p);
+  }
+  for (const sys of Object.keys(bySys).sort((a, b2) => bySys[b2].length - bySys[a].length)) {
+    push(sys, bySys[sys].slice().sort((a, b2) => procRank(b2) - procRank(a)).map(procItem));
+  }
+  if (flatProcs.length) push("Procedures", flatProcs.slice().sort((a, b2) => procRank(b2) - procRank(a)).map(procItem));
   push("Labor", b.labor.filter(o => hit(o.operation)).map(o => ({
     title: o.operation, summary: o.note || "", fitment: "exact", source: "Labor Guide", meta: o.hours != null ? `${o.hours} hr` : "", target: "labor",
   })));
