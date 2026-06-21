@@ -100,10 +100,13 @@ export default function RepairverseLanding({ onResolved }: { onResolved?: (id: n
   return (
     <div className="mx-auto max-w-2xl px-5 py-10">
       <div className="mb-7 text-center">
-        <div className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          <Wrench className="h-3 w-3" /> Repairverse
+        <div className="inline-flex items-center gap-2">
+          <span style={{ width: 30, height: 30, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(150deg,#5f9a0c,#4c7d09)", color: "#fff", boxShadow: "0 1px 2px rgba(15,23,42,.14)" }}>
+            <Wrench className="h-4 w-4" />
+          </span>
+          <span style={{ fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: "-.3px" }}>Repairverse</span>
         </div>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">Repair lookup</h1>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight" style={{ fontFamily: "'IBM Plex Sans',system-ui,sans-serif" }}>Repair lookup</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Enter a VIN, or pick a vehicle to pull procedures, labor times, wiring diagrams, and specs.
         </p>
