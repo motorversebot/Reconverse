@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import {
-  getResearchBundle, searchBundle, isKnownQuery, saveShopNote,
+  getResearchBundle, getProcedureDetail, searchBundle, isKnownQuery, saveShopNote,
   type FitmentLevel, type ResearchBundle,
 } from "@/lib/repairverse";
 
@@ -47,6 +47,7 @@ export default function RepairResearchPage() {
   const [filter, setFilter] = useState<string>("all");
   const [fitment, setFitment] = useState<"all" | FitmentLevel>("all");
   const [activeProc, setActiveProc] = useState(0);
+  const [activeProcId, setActiveProcId] = useState<number | null>(null);
   const noteForm = useRef<{ pattern: string; term: string; body: string }>({ pattern: "", term: "", body: "" });
 
   const [searchParams] = useSearchParams();
@@ -55,6 +56,11 @@ export default function RepairResearchPage() {
     queryKey: ["repairverse", "research", vehicleId],
     queryFn: () => getResearchBundle(vehicleId ?? undefined),
     enabled: !!vehicleId,
+  });
+  const { data: procDetail, isLoading: procLoading } = useQuery({
+    queryKey: ["repairverse", "procedure", activeProcId],
+    queryFn: () => getProcedureDetail(activeProcId as number),
+    enabled: view === "procedure" && activeProcId != null,
   });
 
   const b: ResearchBundle | undefined = bundle;
@@ -82,7 +88,7 @@ export default function RepairResearchPage() {
     return <div style={{ ...css("min-height:60vh;display:flex;align-items:center;justify-content:center;font-size:13px"), color: t.fg3, background: t.bg }}>Loading repair research…</div>;
   }
 
-  const proc = b.procedures[activeProc] || b.procedures[0];
+  const proc = b.procedures.find((p) => p.id === activeProcId) || b.procedures[activeProc] || b.procedures[0];
   const torque = b.specs.filter((s) => s.kind === "torque");
   const fluids = b.specs.filter((s) => s.kind === "fluid");
   const navTabs: [View, string][] = [["home", "Home"], ["labor", "Labor & Specs"], ["tsb", "TSB / Recall"], ["wiring", "Wiring"], ["notes", "Shop Notes"]];
@@ -239,7 +245,7 @@ export default function RepairResearchPage() {
                                 </div>
                               </div>
                               <div style={css("display:flex;flex-direction:column;gap:6px;flex:none")}>
-                                <button onClick={() => { setView(r.target as View); }} style={{ ...css("height:32px;padding:0 16px;border-radius:8px;border:none;font-weight:600;font-size:12.5px;cursor:pointer"), background: t.accent, color: t.accentFg }}>Open</button>
+                                <button onClick={() => { if (r.procId != null) setActiveProcId(r.procId); setView(r.target as View); }} style={{ ...css("height:32px;padding:0 16px;border-radius:8px;border:none;font-weight:600;font-size:12.5px;cursor:pointer"), background: t.accent, color: t.accentFg }}>Open</button>
                                 <button onClick={() => toast.success(`Saved to ${v.ro_number || "RO"}`)} style={{ ...css("height:32px;padding:0 12px;border-radius:8px;border:1px solid;font-weight:600;font-size:12px;cursor:pointer"), borderColor: t.border, background: t.surface, color: t.fg2 }}>Save to RO</button>
                               </div>
                             </div>
@@ -275,24 +281,35 @@ export default function RepairResearchPage() {
           <div style={css("display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px")}>
             <button onClick={() => toast.success(`Saved to ${v.ro_number || "RO"}`)} style={{ ...css("height:36px;padding:0 16px;border-radius:9px;border:none;font-weight:600;font-size:13px;cursor:pointer"), background: t.accent, color: t.accentFg }}>Save to RO</button>
             <button onClick={() => toast.success("Saved to Reconverse estimate")} style={{ ...css("height:36px;padding:0 16px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;border:1px solid"), borderColor: t.accent, background: t.accentSoft, color: t.accent }}>Save to estimate</button>
-            <button onClick={() => { navigator.clipboard?.writeText(proc.steps.map((s) => `${s.step_no}. ${s.title}: ${s.body}`).join("\n")); toast.success("Procedure steps copied"); }} style={{ ...css("height:36px;padding:0 16px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;border:1px solid"), borderColor: t.border, background: t.surface, color: t.fg }}>Copy steps</button>
+            <button onClick={() => { navigator.clipboard?.writeText((procDetail?.steps ?? []).map((s) => `${s.step_no}. ${s.title}: ${s.body}`).join("\n")); toast.success("Procedure steps copied"); }} style={{ ...css("height:36px;padding:0 16px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;border:1px solid"), borderColor: t.border, background: t.surface, color: t.fg }}>Copy steps</button>
           </div>
 
-          {proc.warnings.length > 0 && (
+          {(procLoading || (procDetail?.warnings?.length ?? 0) > 0) ? (
             <div style={{ ...css("border:1px solid;border-radius:12px;padding:15px 17px;margin-bottom:24px"), borderColor: t.warn, background: t.warnBg }}>
-              <span style={{ ...css("display:block;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px"), color: t.warn }}>Warnings</span>
-              {proc.warnings.map((w, i) => (
+              <span style={{ ...css("display:block;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px"), color: t.warn }}>Warnings / cautions</span>
+              {procLoading ? (
+                <span style={{ ...css("font-size:13px"), color: t.fg2 }}>Loading…</span>
+              ) : (procDetail?.warnings ?? []).map((w, i) => (
                 <div key={i} style={{ ...css("display:flex;gap:9px;font-size:13px;line-height:1.5;margin-bottom:5px"), color: t.fg }}>
                   <span style={{ ...css("font-weight:700"), color: t.warn }}>!</span><span>{w.body}</span>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div style={{ ...css("border:1px solid;border-radius:12px;padding:12px 16px;margin-bottom:24px"), borderColor: t.border, background: t.surface }}>
+              <span style={{ ...css("font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase"), color: t.fg3 }}>Warnings / cautions</span>
+              <span style={{ ...css("display:block;font-size:13px;margin-top:6px"), color: t.fg3 }}>No warnings or cautions recorded for this procedure.</span>
             </div>
           )}
 
           <div style={css("display:grid;grid-template-columns:1.5fr 1fr;gap:24px;align-items:start")}>
             <div>
               <h2 style={{ ...css("font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0 0 14px"), color: t.fg }}>Procedure</h2>
-              {proc.steps.map((s, i) => (
+              {procLoading ? (
+                <div style={{ ...css("font-size:13px;padding:13px 0"), color: t.fg3 }}>Loading procedure steps…</div>
+              ) : (procDetail?.steps?.length ?? 0) === 0 ? (
+                <div style={{ ...css("font-size:13px;padding:13px 0"), color: t.fg3 }}>No step-by-step detail available for this procedure.</div>
+              ) : (procDetail!.steps.map((s, i) => (
                 <div key={i} style={{ ...css("display:flex;gap:14px;padding:13px 0;border-bottom:1px solid"), borderColor: t.border }}>
                   <span style={{ ...css("flex:none;width:26px;height:26px;border-radius:7px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center"), background: t.accentSoft, color: t.accent }}>{s.step_no}</span>
                   <div>
@@ -300,7 +317,7 @@ export default function RepairResearchPage() {
                     <span style={{ ...css("display:block;font-size:13px;line-height:1.55"), color: t.fg2 }}>{s.body}</span>
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
             <div style={css("display:flex;flex-direction:column;gap:20px")}>
               <div style={{ ...css("border:1px solid;border-radius:12px;padding:15px 16px"), borderColor: t.border, background: t.surface }}>
@@ -312,17 +329,19 @@ export default function RepairResearchPage() {
                   </div>
                 ))}
               </div>
-              {proc.parts.length > 0 && (
-                <div style={{ ...css("border:1px solid;border-radius:12px;padding:15px 16px"), borderColor: t.border, background: t.surface }}>
-                  <span style={{ ...css("display:block;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:11px"), color: t.fg }}>Parts &amp; tools</span>
-                  {proc.parts.map((p, i) => (
-                    <div key={i} style={css("display:flex;gap:8px;align-items:baseline;padding:5px 0")}>
-                      <span style={{ ...css("width:5px;height:5px;border-radius:50%;flex:none"), background: t.accent }} />
-                      <span style={{ ...css("font-size:12.5px"), color: t.fg2 }}>{p.description} {p.part_number ? `— ${p.part_number}` : ""}{p.qty && p.qty !== "1" ? ` (×${p.qty})` : ""}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div style={{ ...css("border:1px solid;border-radius:12px;padding:15px 16px"), borderColor: t.border, background: t.surface }}>
+                <span style={{ ...css("display:block;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:11px"), color: t.fg }}>Parts needed</span>
+                {procLoading ? (
+                  <span style={{ ...css("font-size:12.5px"), color: t.fg3 }}>Loading…</span>
+                ) : (procDetail?.parts?.length ?? 0) === 0 ? (
+                  <span style={{ ...css("font-size:12.5px"), color: t.fg3 }}>No parts listed for this procedure.</span>
+                ) : (procDetail!.parts.map((p, i) => (
+                  <div key={i} style={css("display:flex;gap:8px;align-items:baseline;padding:5px 0")}>
+                    <span style={{ ...css("width:5px;height:5px;border-radius:50%;flex:none"), background: t.accent }} />
+                    <span style={{ ...css("font-size:12.5px"), color: t.fg2 }}>{p.description} {p.part_number ? `— ${p.part_number}` : ""}{p.qty && p.qty !== "1" ? ` (×${p.qty})` : ""}</span>
+                  </div>
+                )))}
+              </div>
             </div>
           </div>
         </div>

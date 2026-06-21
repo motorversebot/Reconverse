@@ -1,18 +1,18 @@
 /**
  * Repairverse — technician repair-research client.
  *
- * Repairverse is its own Motorverse module but runs inside Reconverse. Data
- * lives in the `repairverse` schema of motorverse_pg (Mission Control's
- * Postgres). The browser stays same-origin and is proxied to MC by api/proxy.ts.
+ * Data lives in the `repairverse` schema of motorverse_pg (Mission Control's
+ * Postgres) and is proxied to MC by api/proxy.ts (same-origin).
  *
- * MC endpoints (to implement server-side; see docs/REPAIRVERSE_MC_ENDPOINTS.md):
- *   GET  /api/v1/reconverse/repairverse/vehicles/:id/research   -> ResearchBundle
- *   GET  /api/v1/reconverse/repairverse/procedures/:id          -> ProcedureDetail
- *   POST /api/v1/reconverse/repairverse/shop-notes              { ...ShopNoteInput }
+ * Scalable model:
+ *   GET  /api/v1/reconverse/repairverse/vehicles/:id/research  -> ResearchBundle
+ *        (procedures are HEADERS only — id/title/system/summary/labor/counts)
+ *   GET  /api/v1/reconverse/repairverse/procedures/:id         -> RVProcedureDetail
+ *        (steps + warnings + parts + related specs — lazy-loaded when opened)
+ *   POST /api/v1/reconverse/repairverse/shop-notes             { ...ShopNoteInput }
  *
- * Until those endpoints exist (or MC_API_INTERNAL is unset on Vercel), every
- * getter falls back to clearly-labeled SEED data so the UI renders. `available`
- * is false whenever seed fallback is used.
+ * Until those endpoints are reachable, getters fall back to clearly-LABELED seed
+ * data (`available:false`) so the UI renders — never silent demo data.
  */
 import { apiFetch } from "@/lib/api";
 
@@ -32,14 +32,16 @@ export interface RVVehicle {
   ro_number: string | null;
   stock: string | null;
   mileage: number | null;
-  short: string;   // "2019 Toyota Camry LE"
-  full: string;    // "2019 Toyota Camry LE · 2.5L I4"
+  short: string;
+  full: string;
 }
 
 export interface RVStep { step_no: number; title: string; body: string; }
 export interface RVWarning { severity: string; body: string; }
 export interface RVPart { part_number: string | null; description: string | null; qty: string | null; }
+export interface RVSpec { kind: "torque" | "fluid" | "general"; name: string; value: string | null; }
 
+/** Procedure HEADER — returned in the research bundle (lightweight + counts). */
 export interface RVProcedure {
   id: number;
   title: string;
@@ -50,13 +52,30 @@ export interface RVProcedure {
   labor_hours: number | null;
   source: string | null;
   source_ref: string | null;
+  step_count: number;
+  warning_count: number;
+  part_count: number;
+}
+
+/** Procedure DETAIL — lazy-loaded when a procedure is opened. */
+export interface RVProcedureDetail {
+  id: number;
+  title: string;
+  system: string | null;
+  summary: string | null;
+  difficulty: string | null;
+  fitment_level: FitmentLevel;
+  labor_hours: number | null;
+  source: string | null;
+  source_ref: string | null;
+  vehicle: RVVehicle | null;
   steps: RVStep[];
   warnings: RVWarning[];
   parts: RVPart[];
+  specs: RVSpec[];
 }
 
 export interface RVLaborOp { operation: string; hours: number | null; note: string | null; }
-export interface RVSpec { kind: "torque" | "fluid" | "general"; name: string; value: string | null; }
 export interface RVDtc { code: string; description: string | null; system: string | null; causes: string | null; diagnostic_steps: string | null; }
 export interface RVTsb { tsb_number: string | null; title: string | null; summary: string | null; issued_date: string | null; fitment_level: FitmentLevel; }
 export interface RVRecall { recall_id: string | null; status: string | null; title: string | null; summary: string | null; }
@@ -67,7 +86,7 @@ export interface RVMaintenanceItem { service: string; interval_miles: number | n
 export interface RVShopNote { vehicle_pattern: string | null; related_term: string | null; dtc: string | null; body: string; author: string | null; created_at?: string | null; }
 
 export interface ResearchBundle {
-  available: boolean;          // false => seed fallback (MC endpoint unavailable)
+  available: boolean;
   vehicle: RVVehicle;
   procedures: RVProcedure[];
   labor: RVLaborOp[];
@@ -108,7 +127,7 @@ function normVehicle(v: any): RVVehicle {
   return { ...base, short, full: base.engine ? `${short} · ${base.engine}` : short };
 }
 
-// --- Seed fallback (mirrors repairverse_seed.sql — labeled sample data) ---
+// --- Seed fallback (LABELED sample data — mirrors repairverse_seed.sql) ---
 
 const SEED_VEHICLE: RVVehicle = normVehicle({
   id: 1, year: 2019, make: "Toyota", model: "Camry", trim: "LE",
@@ -116,59 +135,72 @@ const SEED_VEHICLE: RVVehicle = normVehicle({
   ro_number: "RO-44827", stock: "T-0912", mileage: 78412,
 });
 
+const SEED_SPECS: RVSpec[] = [
+  { kind: "torque", name: "Caliper guide-pin bolt", value: "25 ft-lb · 34 Nm" },
+  { kind: "torque", name: "Caliper bracket bolt", value: "77 ft-lb · 105 Nm" },
+  { kind: "torque", name: "Wheel lug nut", value: "76 ft-lb · 103 Nm" },
+  { kind: "torque", name: "Master cyl. to booster", value: "18 ft-lb" },
+  { kind: "fluid", name: "Brake fluid", value: "DOT 3" },
+  { kind: "fluid", name: "Engine oil (w/ filter)", value: "0W-16 · 4.6 qt" },
+  { kind: "fluid", name: "Engine coolant", value: "SLLC · 6.6 qt" },
+  { kind: "fluid", name: "Trans fluid (drain/fill)", value: "Toyota WS · 3.4 qt" },
+  { kind: "general", name: "Brake bleed sequence", value: "RR-LR-RF-LF" },
+];
+
+const SEED_PROC_DETAILS: RVProcedureDetail[] = [
+  {
+    id: 1, title: "Front Brake Pads & Rotors — Replace", system: "brakes",
+    summary: "Remove calipers, retract pistons, replace pads and rotors, torque to spec, bed-in.",
+    difficulty: "moderate", fitment_level: "exact", labor_hours: 1.6,
+    source: "Seed — OEM Service", source_ref: "Updated Mar 2024", vehicle: SEED_VEHICLE,
+    steps: [
+      { step_no: 1, title: "Raise & support", body: "Loosen front lug nuts, raise the vehicle, support on stands, and remove both front wheels." },
+      { step_no: 2, title: "Remove caliper", body: "Remove the two caliper guide-pin bolts (12mm). Lift the caliper off and suspend it with wire — never let it hang by the hose." },
+      { step_no: 3, title: "Remove bracket & pads", body: "Remove the caliper mounting bracket bolts (17mm). Take out the old pads, shims, and anti-rattle hardware." },
+      { step_no: 4, title: "Remove rotor", body: "Remove the rotor retaining screw if present and pull the rotor. Apply penetrant or use the M8 jack-screw holes if seized." },
+      { step_no: 5, title: "Prep & rotor", body: "Wire-brush the hub face clean. Mount the new rotor and snug the retaining screw." },
+      { step_no: 6, title: "Retract piston", body: "Crack the bleeder, then compress the caliper piston with a C-clamp or piston tool. Close the bleeder." },
+      { step_no: 7, title: "Install pads", body: "Fit new hardware and pads, lubricating the contact points and slide pins. Reinstall the bracket — 77 ft-lb." },
+      { step_no: 8, title: "Reassemble & bed-in", body: "Reinstall caliper guide bolts (25 ft-lb). Pump the pedal firm before moving. Mount wheels (76 ft-lb), top off fluid, road-test and bed the pads in." },
+    ],
+    warnings: [
+      { severity: "warning", body: "Do not press the brake pedal while calipers are removed — pistons can pop out." },
+      { severity: "warning", body: "Open the bleeder screw before retracting the piston to avoid backfeeding fluid into the ABS modulator." },
+    ],
+    parts: [
+      { part_number: "04465-33471", description: "Front Brake Pad Set (incl. shims & hardware)", qty: "1" },
+      { part_number: "43512-06200", description: "Front Disc Rotor, 305mm vented", qty: "2" },
+    ],
+    specs: SEED_SPECS.filter((s) => s.kind === "torque"),
+  },
+  {
+    id: 2, title: "Front Brake Pads Only — Replace", system: "brakes",
+    summary: "Pad replacement with hardware; rotor measurement and cleaning included.",
+    difficulty: "moderate", fitment_level: "exact", labor_hours: 1.2,
+    source: "Seed — OEM Service", source_ref: "Updated Mar 2024", vehicle: SEED_VEHICLE,
+    steps: [], warnings: [], parts: [], specs: SEED_SPECS.filter((s) => s.kind === "torque"),
+  },
+];
+
+function toHeader(d: RVProcedureDetail): RVProcedure {
+  return {
+    id: d.id, title: d.title, system: d.system, summary: d.summary, difficulty: d.difficulty,
+    fitment_level: d.fitment_level, labor_hours: d.labor_hours, source: d.source, source_ref: d.source_ref,
+    step_count: d.steps.length, warning_count: d.warnings.length, part_count: d.parts.length,
+  };
+}
+
 const SEED_BUNDLE: ResearchBundle = {
   available: false,
   vehicle: SEED_VEHICLE,
-  procedures: [
-    {
-      id: 1, title: "Front Brake Pads & Rotors — Replace", system: "brakes",
-      summary: "Remove calipers, retract pistons, replace pads and rotors, torque to spec, bed-in.",
-      difficulty: "moderate", fitment_level: "exact", labor_hours: 1.6,
-      source: "Seed — OEM Service", source_ref: "Updated Mar 2024",
-      steps: [
-        { step_no: 1, title: "Raise & support", body: "Loosen front lug nuts, raise the vehicle, support on stands, and remove both front wheels." },
-        { step_no: 2, title: "Remove caliper", body: "Remove the two caliper guide-pin bolts (12mm). Lift the caliper off and suspend it with wire — never let it hang by the hose." },
-        { step_no: 3, title: "Remove bracket & pads", body: "Remove the caliper mounting bracket bolts (17mm). Take out the old pads, shims, and anti-rattle hardware." },
-        { step_no: 4, title: "Remove rotor", body: "Remove the rotor retaining screw if present and pull the rotor. Apply penetrant or use the M8 jack-screw holes if seized." },
-        { step_no: 5, title: "Prep & rotor", body: "Wire-brush the hub face clean. Mount the new rotor and snug the retaining screw." },
-        { step_no: 6, title: "Retract piston", body: "Crack the bleeder, then compress the caliper piston with a C-clamp or piston tool. Close the bleeder." },
-        { step_no: 7, title: "Install pads", body: "Fit new hardware and pads, lubricating the contact points and slide pins. Reinstall the bracket — 77 ft-lb." },
-        { step_no: 8, title: "Reassemble & bed-in", body: "Reinstall caliper guide bolts (25 ft-lb). Pump the pedal firm before moving. Mount wheels (76 ft-lb), top off fluid, road-test and bed the pads in." },
-      ],
-      warnings: [
-        { severity: "warning", body: "Do not press the brake pedal while calipers are removed — pistons can pop out." },
-        { severity: "warning", body: "Open the bleeder screw before retracting the piston to avoid backfeeding fluid into the ABS modulator." },
-      ],
-      parts: [
-        { part_number: "04465-33471", description: "Front Brake Pad Set (incl. shims & hardware)", qty: "1" },
-        { part_number: "43512-06200", description: "Front Disc Rotor, 305mm vented", qty: "2" },
-      ],
-    },
-    {
-      id: 2, title: "Front Brake Pads Only — Replace", system: "brakes",
-      summary: "Pad replacement with hardware; rotor measurement and cleaning included.",
-      difficulty: "moderate", fitment_level: "exact", labor_hours: 1.2,
-      source: "Seed — OEM Service", source_ref: "Updated Mar 2024",
-      steps: [], warnings: [], parts: [],
-    },
-  ],
+  procedures: SEED_PROC_DETAILS.map(toHeader),
   labor: [
     { operation: "Brake Pads & Rotors, Front — Replace", hours: 1.6, note: "Includes hardware and bed-in" },
     { operation: "Brake Pads, Front — Replace", hours: 1.2, note: "Pads only, both sides" },
     { operation: "Brake Rotor, Front — Refinish (ea)", hours: 0.4, note: "On-car lathe" },
     { operation: "Brake System — Flush & Bleed", hours: 0.8, note: "Pressure bleed, 4 corners" },
   ],
-  specs: [
-    { kind: "torque", name: "Caliper guide-pin bolt", value: "25 ft-lb · 34 Nm" },
-    { kind: "torque", name: "Caliper bracket bolt", value: "77 ft-lb · 105 Nm" },
-    { kind: "torque", name: "Wheel lug nut", value: "76 ft-lb · 103 Nm" },
-    { kind: "torque", name: "Master cyl. to booster", value: "18 ft-lb" },
-    { kind: "fluid", name: "Brake fluid", value: "DOT 3" },
-    { kind: "fluid", name: "Engine oil (w/ filter)", value: "0W-16 · 4.6 qt" },
-    { kind: "fluid", name: "Engine coolant", value: "SLLC · 6.6 qt" },
-    { kind: "fluid", name: "Trans fluid (drain/fill)", value: "Toyota WS · 3.4 qt" },
-    { kind: "general", name: "Brake bleed sequence", value: "RR-LR-RF-LF" },
-  ],
+  specs: SEED_SPECS,
   dtcs: [
     { code: "P0101", description: "Mass Air Flow Circuit Range/Performance", system: "engine",
       causes: "Loose intake snorkel clamp; torn accordion boot; dirty/failed MAF sensor.",
@@ -215,7 +247,35 @@ const SEED_BUNDLE: ResearchBundle = {
   ],
 };
 
-// --- Normalizers (shape MC payloads into the bundle) ---------------------
+// --- Normalizers ---------------------------------------------------------
+
+function normSpec(s: any): RVSpec { return { kind: (s.kind ?? "general"), name: str(s.name) ?? "", value: str(s.value) }; }
+
+function normProcedure(p: any): RVProcedure {
+  return {
+    id: Number(p.id), title: str(p.title) ?? "", system: str(p.system), summary: str(p.summary),
+    difficulty: str(p.difficulty), fitment_level: (p.fitment_level ?? "exact"),
+    labor_hours: num(p.labor_hours), source: str(p.source), source_ref: str(p.source_ref),
+    step_count: num(p.step_count) ?? 0, warning_count: num(p.warning_count) ?? 0, part_count: num(p.part_count) ?? 0,
+  };
+}
+
+function normProcedureDetail(p: any): RVProcedureDetail {
+  return {
+    id: Number(p.id), title: str(p.title) ?? "", system: str(p.system), summary: str(p.summary),
+    difficulty: str(p.difficulty), fitment_level: (p.fitment ?? p.fitment_level ?? "exact"),
+    labor_hours: num(p.labor_hours), source: str(p.source), source_ref: str(p.source_ref),
+    vehicle: p.vehicle ? normVehicle(p.vehicle) : null,
+    steps: Array.isArray(p.steps) ? p.steps.map((s: any) => ({ step_no: num(s.step_no) ?? 0, title: str(s.title) ?? "", body: str(s.body) ?? "" })) : [],
+    warnings: Array.isArray(p.warnings) ? p.warnings.map((w: any) => ({ severity: str(w.severity) ?? "warning", body: str(w.body) ?? "" })) : [],
+    parts: Array.isArray(p.parts) ? p.parts.map((pt: any) => ({ part_number: str(pt.part_number), description: str(pt.description), qty: str(pt.qty) })) : [],
+    specs: Array.isArray(p.specs) ? p.specs.map(normSpec) : [],
+  };
+}
+
+function normNote(n: any): RVShopNote {
+  return { vehicle_pattern: str(n.vehicle_pattern), related_term: str(n.related_term), dtc: str(n.dtc), body: str(n.body) ?? "", author: str(n.author), created_at: str(n.created_at) };
+}
 
 function normBundle(d: any): ResearchBundle {
   if (!d || typeof d !== "object") return { ...SEED_BUNDLE };
@@ -224,7 +284,7 @@ function normBundle(d: any): ResearchBundle {
     vehicle: normVehicle(d.vehicle ?? {}),
     procedures: Array.isArray(d.procedures) ? d.procedures.map(normProcedure) : [],
     labor: Array.isArray(d.labor) ? d.labor.map((o: any) => ({ operation: str(o.operation) ?? "", hours: num(o.hours), note: str(o.note) })) : [],
-    specs: Array.isArray(d.specs) ? d.specs.map((s: any) => ({ kind: (s.kind ?? "general"), name: str(s.name) ?? "", value: str(s.value) })) : [],
+    specs: Array.isArray(d.specs) ? d.specs.map(normSpec) : [],
     dtcs: Array.isArray(d.dtcs) ? d.dtcs.map((x: any) => ({ code: str(x.code) ?? "", description: str(x.description), system: str(x.system), causes: str(x.causes), diagnostic_steps: str(x.diagnostic_steps) })) : [],
     tsbs: Array.isArray(d.tsbs) ? d.tsbs.map((x: any) => ({ tsb_number: str(x.tsb_number), title: str(x.title), summary: str(x.summary), issued_date: str(x.issued_date), fitment_level: (x.fitment_level ?? "possible") })) : [],
     recalls: Array.isArray(d.recalls) ? d.recalls.map((x: any) => ({ recall_id: str(x.recall_id), status: str(x.status), title: str(x.title), summary: str(x.summary) })) : [],
@@ -233,19 +293,6 @@ function normBundle(d: any): ResearchBundle {
     maintenance: Array.isArray(d.maintenance) ? d.maintenance.map((m: any) => ({ service: str(m.service) ?? "", interval_miles: num(m.interval_miles), interval_months: num(m.interval_months), note: str(m.note) })) : [],
     notes: Array.isArray(d.notes) ? d.notes.map(normNote) : [],
   };
-}
-function normProcedure(p: any): RVProcedure {
-  return {
-    id: p.id, title: str(p.title) ?? "", system: str(p.system), summary: str(p.summary),
-    difficulty: str(p.difficulty), fitment_level: (p.fitment_level ?? "exact"),
-    labor_hours: num(p.labor_hours), source: str(p.source), source_ref: str(p.source_ref),
-    steps: Array.isArray(p.steps) ? p.steps.map((s: any) => ({ step_no: num(s.step_no) ?? 0, title: str(s.title) ?? "", body: str(s.body) ?? "" })) : [],
-    warnings: Array.isArray(p.warnings) ? p.warnings.map((w: any) => ({ severity: str(w.severity) ?? "warning", body: str(w.body) ?? "" })) : [],
-    parts: Array.isArray(p.parts) ? p.parts.map((pt: any) => ({ part_number: str(pt.part_number), description: str(pt.description), qty: str(pt.qty) })) : [],
-  };
-}
-function normNote(n: any): RVShopNote {
-  return { vehicle_pattern: str(n.vehicle_pattern), related_term: str(n.related_term), dtc: str(n.dtc), body: str(n.body) ?? "", author: str(n.author), created_at: str(n.created_at) };
 }
 
 // --- Getters -------------------------------------------------------------
@@ -260,6 +307,20 @@ export async function getResearchBundle(vehicleId?: number | string): Promise<Re
     return normBundle(j.data);
   } catch {
     return { ...SEED_BUNDLE };
+  }
+}
+
+/** Lazy-load full procedure detail (steps/warnings/parts/specs) when opened. */
+export async function getProcedureDetail(procedureId: number | string): Promise<RVProcedureDetail | null> {
+  const seed = () => SEED_PROC_DETAILS.find((p) => String(p.id) === String(procedureId)) ?? null;
+  try {
+    const res = await apiFetch(`/api/v1/reconverse/repairverse/procedures/${procedureId}`);
+    if (!res.ok) return seed();
+    const j = await res.json().catch(() => null);
+    if (!j?.ok || !j.data) return seed();
+    return normProcedureDetail(j.data);
+  } catch {
+    return seed();
   }
 }
 
@@ -278,9 +339,8 @@ export async function saveShopNote(input: ShopNoteInput): Promise<{ ok: boolean;
   }
 }
 
-// Client-side search over a loaded bundle — groups results by category and
-// applies the Exact/Possible/Generic fitment filter, mirroring the prototype.
-export interface ResultItem { title: string; summary: string; fitment: FitmentLevel; source: string; meta: string; target: string; }
+// Client-side search over a loaded bundle.
+export interface ResultItem { title: string; summary: string; fitment: FitmentLevel; source: string; meta: string; target: string; procId?: number; }
 export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | FitmentLevel = "all") {
   const q = (query || "").toLowerCase().trim();
   const hit = (s: string) => !q || s.toLowerCase().includes(q);
@@ -288,7 +348,8 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
   const push = (category: string, items: ResultItem[]) => { const f = items.filter(i => fitment === "all" || i.fitment === fitment); if (f.length) groups.push({ category, items: f }); };
 
   push("Procedures", b.procedures.filter(p => hit(p.title) || hit(p.summary || "")).map(p => ({
-    title: p.title, summary: p.summary || "", fitment: p.fitment_level, source: p.source || "—", meta: p.source_ref || "", target: "procedure",
+    title: p.title, summary: p.summary || "", fitment: p.fitment_level, source: p.source || "—",
+    meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
   })));
   push("Labor", b.labor.filter(o => hit(o.operation)).map(o => ({
     title: o.operation, summary: o.note || "", fitment: "exact", source: "Labor Guide", meta: o.hours != null ? `${o.hours} hr` : "", target: "labor",
