@@ -324,6 +324,28 @@ export async function getProcedureDetail(procedureId: number | string): Promise<
   }
 }
 
+export type RVCompareSource = { id: number; name: string; kind: string; labor: number; procedures: number; specs: number };
+export type RVCompareLabor = { operation: string; by: Record<string, number>; sources: number; spread: number };
+export type RVCompareProc = { src: string; n: number; systems: number };
+export type RVCompare = {
+  vehicle: { id: number; year: number; make: string; model: string; engine?: string | null; label: string };
+  sibling_count: number;
+  sources: RVCompareSource[];
+  labor: RVCompareLabor[];
+  procedures: RVCompareProc[];
+};
+
+export async function getCompare(vehicleId: number | string): Promise<RVCompare | null> {
+  try {
+    const res = await apiFetch(`/api/v1/reconverse/repairverse/vehicles/${vehicleId}/compare`);
+    if (!res.ok) return null;
+    const j = await res.json().catch(() => null);
+    return j?.ok && j.data ? (j.data as RVCompare) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveShopNote(input: ShopNoteInput): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await apiFetch(`/api/v1/reconverse/repairverse/shop-notes`, {

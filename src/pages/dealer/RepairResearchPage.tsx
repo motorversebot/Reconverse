@@ -17,11 +17,11 @@ import {
   AlertTriangle, MapPin, CalendarClock, StickyNote, type LucideIcon,
 } from "lucide-react";
 import {
-  getResearchBundle, getProcedureDetail, searchBundle, isKnownQuery, saveShopNote,
+  getResearchBundle, getProcedureDetail, getCompare, searchBundle, isKnownQuery, saveShopNote,
   type FitmentLevel, type ResearchBundle,
 } from "@/lib/repairverse";
 
-type View = "home" | "results" | "procedure" | "labor" | "tsb" | "wiring" | "notes";
+type View = "home" | "results" | "procedure" | "labor" | "tsb" | "wiring" | "notes" | "compare";
 
 const THEMES = {
   light: { bg:"#f7f8f9", surface:"#ffffff", surface2:"#eef0f2", border:"#e6e8eb", border2:"#d6dade", fg:"#15181c", fg2:"#586070", fg3:"#9aa1ab", accent:"#5f9a0c", accentDeep:"#4c7d09", accentFg:"#ffffff", accentSoft:"rgba(95,154,12,0.10)", exact:"#16a34a", possible:"#d97706", generic:"#9aa1ab", warn:"#dc2626", warnBg:"rgba(220,38,38,0.05)", shadow:"0 1px 2px rgba(15,23,42,0.06)", shMd:"0 6px 20px -8px rgba(15,23,42,0.14)", ring:"0 0 0 3px rgba(95,154,12,0.18)" },
@@ -74,6 +74,7 @@ export default function RepairResearchPage() {
   const [fitment, setFitment] = useState<"all" | FitmentLevel>("all");
   const [activeProc, setActiveProc] = useState(0);
   const [activeProcId, setActiveProcId] = useState<number | null>(null);
+  const [cmpQ, setCmpQ] = useState("");
   const noteForm = useRef<{ pattern: string; term: string; body: string }>({ pattern: "", term: "", body: "" });
 
   const [searchParams] = useSearchParams();
@@ -87,6 +88,11 @@ export default function RepairResearchPage() {
     queryKey: ["repairverse", "procedure", activeProcId],
     queryFn: () => getProcedureDetail(activeProcId as number),
     enabled: view === "procedure" && activeProcId != null,
+  });
+  const { data: compare, isLoading: compareLoading } = useQuery({
+    queryKey: ["repairverse", "compare", vehicleId],
+    queryFn: () => getCompare(vehicleId as string),
+    enabled: view === "compare" && !!vehicleId,
   });
 
   const b: ResearchBundle | undefined = bundle;
@@ -117,7 +123,7 @@ export default function RepairResearchPage() {
   const proc = b.procedures.find((p) => p.id === activeProcId) || b.procedures[activeProc] || b.procedures[0];
   const torque = b.specs.filter((s) => s.kind === "torque");
   const fluids = b.specs.filter((s) => s.kind === "fluid");
-  const navTabs: [View, string][] = [["home", "Home"], ["labor", "Labor & Specs"], ["tsb", "TSB / Recall"], ["wiring", "Wiring"], ["notes", "Shop Notes"]];
+  const navTabs: [View, string][] = [["home", "Home"], ["labor", "Labor & Specs"], ["compare", "Compare"], ["tsb", "TSB / Recall"], ["wiring", "Wiring"], ["notes", "Shop Notes"]];
 
   const specStrip = [
     { label: "VIN", value: v.vin || "—" },
@@ -551,6 +557,109 @@ export default function RepairResearchPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ===== COMPARE ===== */}
+      {view === "compare" && (
+        <div className="rv-fade" style={css("max-width:980px;margin:0 auto;padding:26px 22px 70px")}>
+          <h1 style={{ ...css("font-size:24px;letter-spacing:-.5px;font-weight:700;margin:0 0 4px"), color: t.fg }}>Source comparison</h1>
+          <p style={{ ...css("font-size:13px;margin:0 0 22px"), color: t.fg2 }}>{v.full} — labor hours &amp; procedure coverage across ALLDATA, ProDemand and OEM.</p>
+
+          {compareLoading ? (
+            <div style={{ ...css("font-size:13px;padding:20px 0"), color: t.fg3 }}>Loading comparison…</div>
+          ) : !compare ? (
+            <div style={{ ...css("text-align:center;padding:48px 20px;border:1px dashed;border-radius:14px"), borderColor: t.border, background: t.surface }}>
+              <p style={{ ...css("font-size:13.5px;margin:0"), color: t.fg2 }}>No comparison data for this vehicle yet.</p>
+            </div>
+          ) : (
+            <>
+              <div style={css("display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px;margin-bottom:30px")}>
+                {compare.sources.map((s) => {
+                  const has = s.labor + s.procedures + s.specs > 0;
+                  return (
+                    <div key={s.id} style={{ ...css("border:1px solid;border-radius:13px;padding:15px 16px"), borderColor: t.border, background: t.surface, boxShadow: t.shadow, opacity: has ? 1 : 0.55 }}>
+                      <div style={css("display:flex;align-items:center;gap:8px;margin-bottom:12px")}>
+                        <span style={{ ...css("font-size:14px;font-weight:700"), color: t.fg }}>{s.name}</span>
+                        <span style={{ ...css("font-size:9.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:5px"), color: t.fg3, background: t.surface2 }}>{s.kind === "oem" ? "OEM" : "Aftermarket"}</span>
+                      </div>
+                      <div style={css("display:flex;gap:18px")}>
+                        {([["Labor", s.labor], ["Procedures", s.procedures], ["Specs", s.specs]] as [string, number][]).map(([k, n], i) => (
+                          <div key={i}>
+                            <span style={{ ...css("display:block;font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600"), color: n > 0 ? t.fg : t.fg3 }}>{n}</span>
+                            <span style={{ ...css("display:block;font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin-top:1px"), color: t.fg3 }}>{k}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(() => {
+                const laborCols = compare.sources.filter((s) => s.labor > 0).map((s) => s.name);
+                const rows = compare.labor.filter((r) => !cmpQ || r.operation.toLowerCase().includes(cmpQ.toLowerCase()));
+                const matched = rows.filter((r) => r.sources >= 2).length;
+                const gridCols = `1fr ${laborCols.map(() => "76px").join(" ")} 60px`;
+                return (
+                  <>
+                    <div style={css("display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px")}>
+                      <h2 style={{ ...css("font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0"), color: t.fg }}>Labor hours</h2>
+                      <div style={css("position:relative;width:230px;max-width:60vw")}>
+                        <Search size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: t.fg3, pointerEvents: "none" }} />
+                        <input className="rv-input" value={cmpQ} onChange={(e) => setCmpQ(e.target.value)} placeholder="Filter operations…" style={{ ...css("width:100%;height:32px;padding:0 12px 0 32px;border-radius:8px;border:1px solid;font-size:12.5px;outline:none"), borderColor: t.border, background: t.bg, color: t.fg }} />
+                      </div>
+                    </div>
+                    {laborCols.length === 0 ? (
+                      <p style={{ ...css("font-size:13px;padding:14px 0"), color: t.fg3 }}>No labor data for this vehicle from any source yet.</p>
+                    ) : (
+                      <>
+                        <p style={{ ...css("font-size:11.5px;margin:0 0 12px;line-height:1.5"), color: t.fg3 }}>{matched} operation{matched === 1 ? "" : "s"} matched across sources (Δ shown, highlighted). ALLDATA and ProDemand use different labor catalogs, so most operations list under one source.</p>
+                        <div style={{ ...css("border:1px solid;border-radius:13px;overflow:hidden"), borderColor: t.border, boxShadow: t.shadow }}>
+                          <div style={{ ...css("display:grid;gap:10px;padding:10px 16px;align-items:center"), gridTemplateColumns: gridCols, background: t.surface2 }}>
+                            <span style={{ ...css("font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase"), color: t.fg3 }}>Operation</span>
+                            {laborCols.map((c) => <span key={c} style={{ ...css("font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-align:right"), color: t.fg3 }}>{c}</span>)}
+                            <span style={{ ...css("font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-align:right"), color: t.fg3 }}>Δ hr</span>
+                          </div>
+                          {rows.slice(0, 250).map((r, i) => (
+                            <div key={i} style={{ ...css("display:grid;gap:10px;padding:11px 16px;align-items:center;border-top:1px solid"), gridTemplateColumns: gridCols, borderColor: t.border, background: r.sources >= 2 ? t.accentSoft : t.surface }}>
+                              <span style={{ ...css("font-size:12.5px;line-height:1.35"), color: t.fg }}>{r.operation}</span>
+                              {laborCols.map((c) => (
+                                <span key={c} style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:right"), color: r.by[c] != null ? t.fg : t.fg3 }}>{r.by[c] != null ? r.by[c] : "—"}</span>
+                              ))}
+                              <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;text-align:right"), color: r.sources >= 2 ? t.possible : t.fg3 }}>{r.sources >= 2 ? r.spread : "—"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <h2 style={{ ...css("font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:30px 0 12px"), color: t.fg }}>Procedure coverage</h2>
+                    {compare.procedures.length === 0 ? (
+                      <p style={{ ...css("font-size:13px;padding:6px 0"), color: t.fg3 }}>No procedures for this vehicle from any source yet.</p>
+                    ) : (
+                      <div style={{ ...css("border:1px solid;border-radius:13px;padding:8px 16px"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
+                        {(() => {
+                          const maxN = Math.max(...compare.procedures.map((p) => p.n), 1);
+                          return compare.procedures.map((p, i) => (
+                            <div key={i} style={{ ...css("padding:11px 0;border-bottom:1px solid"), borderColor: i === compare.procedures.length - 1 ? "transparent" : t.border }}>
+                              <div style={css("display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px")}>
+                                <span style={{ ...css("font-size:13px;font-weight:600"), color: t.fg }}>{p.src}</span>
+                                <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:12.5px"), color: t.fg2 }}>{p.n} procedures · {p.systems} systems</span>
+                              </div>
+                              <div style={{ ...css("height:7px;border-radius:4px;overflow:hidden"), background: t.surface2 }}>
+                                <div style={{ ...css("height:100%;border-radius:4px"), width: `${Math.round((p.n / maxN) * 100)}%`, background: t.accent }} />
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
     </div>
