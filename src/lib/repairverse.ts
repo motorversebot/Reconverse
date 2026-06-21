@@ -347,10 +347,21 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
   const groups: { category: string; items: ResultItem[] }[] = [];
   const push = (category: string, items: ResultItem[]) => { const f = items.filter(i => fitment === "all" || i.fitment === fitment); if (f.length) groups.push({ category, items: f }); };
 
-  push("Procedures", b.procedures.filter(p => hit(p.title) || hit(p.summary || "")).map(p => ({
-    title: p.title, summary: p.summary || "", fitment: p.fitment_level, source: p.source || "—",
-    meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
-  })));
+  const procRank = (p: RVProcedure): number => {
+    const t = (p.title || "").toLowerCase();
+    let sc = p.step_count ? Math.min(p.step_count, 40) : 0;
+    if (/removal|installation|replace|overhaul|disassembl|assembl|adjust/.test(t)) sc += 120;
+    else if (/inspection|diagnos|test/.test(t)) sc += 60;
+    if (/service data|description|precaution|exploded|component parts|reference|how to/.test(t)) sc -= 80;
+    if (q && t.startsWith(q)) sc += 40;
+    return sc;
+  };
+  push("Procedures", b.procedures.filter(p => hit(p.title) || hit(p.summary || ""))
+    .slice().sort((a, b2) => procRank(b2) - procRank(a))
+    .map(p => ({
+      title: p.title, summary: p.summary || "", fitment: p.fitment_level, source: p.source || "—",
+      meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
+    })));
   push("Labor", b.labor.filter(o => hit(o.operation)).map(o => ({
     title: o.operation, summary: o.note || "", fitment: "exact", source: "Labor Guide", meta: o.hours != null ? `${o.hours} hr` : "", target: "labor",
   })));
