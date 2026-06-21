@@ -267,7 +267,8 @@ export default function RepairResearchPage() {
           <button onClick={() => setView("results")} style={{ ...css("font-size:12.5px;border:none;background:none;cursor:pointer;margin-bottom:14px"), color: t.fg2 }}>← Back to results</button>
           <span style={{ ...css("display:inline-flex;font-size:10.5px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;padding:3px 9px;border-radius:6px"), color: t.exact, background: `${t.exact}1f` }}>Exact vehicle match</span>
           <h1 style={{ ...css("font-size:26px;letter-spacing:-.6px;font-weight:700;margin:10px 0 6px"), color: t.fg }}>{proc.title}</h1>
-          <p style={{ ...css("font-size:13px;margin:0 0 20px"), color: t.fg2 }}>{v.full} · {proc.source || "OEM"} {proc.source_ref ? `· ${proc.source_ref}` : ""}</p>
+          <p style={{ ...css("font-size:13px;margin:0 0 4px"), color: t.fg2 }}>{v.full} · {proc.source || "OEM"} {proc.source_ref ? `· ${proc.source_ref}` : ""}</p>
+          {proc.system ? <p style={{ ...css("font-size:11.5px;font-family:'IBM Plex Mono',monospace;margin:0 0 20px;line-height:1.5"), color: t.fg3 }}>{proc.system.replace(/\s*>\s*/g, " › ")}</p> : <div style={{ marginBottom: 16 }} />}
 
           <div style={css("display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px")}>
             {[["Labor time", proc.labor_hours != null ? `${proc.labor_hours} hr` : "—"], ["Difficulty", proc.difficulty || "—"], ["Fitment", "Exact"]].map(([l, val], i) => (

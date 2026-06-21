@@ -356,10 +356,18 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
     if (q && t.startsWith(q)) sc += 40;
     return sc;
   };
-  push("Procedures", b.procedures.filter(p => hit(p.title) || hit(p.summary || ""))
+  const segs = (sys: string | null) => (sys || "").split(/\s*>\s*/).map((x) => x.trim()).filter(Boolean);
+  const GENERIC_T = /^(dtc )?diagnosis procedure$|^description$|^removal( and| &amp;| &)? installation$|^inspection$|^component parts$|^exploded view$|^adjustment$|^reference$/i;
+  const procTitle = (p: RVProcedure) => {
+    const parts = segs(p.system); const last = parts[parts.length - 1] || ""; const t = (p.title || "").trim();
+    if (last && (GENERIC_T.test(t) || /\b[PCBU][0-9]{3,4}\b/.test(last)) && !t.toLowerCase().includes(last.toLowerCase())) return `${last} — ${t}`;
+    return t;
+  };
+  const procPath = (p: RVProcedure) => segs(p.system).slice(0, -1).join(" › ");
+  push("Procedures", b.procedures.filter(p => hit(p.title) || hit(p.summary || "") || hit(p.system || ""))
     .slice().sort((a, b2) => procRank(b2) - procRank(a))
     .map(p => ({
-      title: p.title, summary: p.summary || "", fitment: p.fitment_level, source: p.source || "—",
+      title: procTitle(p), summary: procPath(p) || p.summary || "", fitment: p.fitment_level, source: p.source || "—",
       meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
     })));
   push("Labor", b.labor.filter(o => hit(o.operation)).map(o => ({
