@@ -81,7 +81,7 @@ export interface RVDtc { code: string; description: string | null; system: strin
 export interface RVTsb { tsb_number: string | null; title: string | null; summary: string | null; issued_date: string | null; fitment_level: FitmentLevel; }
 export interface RVRecall { recall_id: string | null; status: string | null; title: string | null; summary: string | null; }
 export interface RVCircuit { name: string | null; wire: string | null; pin: string | null; color: string | null; }
-export interface RVWiringDiagram { circuit: string | null; drawing_ref: string | null; description: string | null; circuits: RVCircuit[]; }
+export interface RVWiringDiagram { circuit: string | null; drawing_ref: string | null; description: string | null; circuits: RVCircuit[]; images: { id: number; seq: number; mime: string; url: string }[]; }
 export interface RVComponentLocation { component: string; location: string | null; notes: string | null; }
 export interface RVMaintenanceItem { service: string; interval_miles: number | null; interval_months: number | null; note: string | null; }
 export interface RVShopNote { vehicle_pattern: string | null; related_term: string | null; dtc: string | null; body: string; author: string | null; created_at?: string | null; }
@@ -290,7 +290,7 @@ function normBundle(d: any): ResearchBundle {
     dtcs: Array.isArray(d.dtcs) ? d.dtcs.map((x: any) => ({ code: str(x.code) ?? "", description: str(x.description), system: str(x.system), causes: str(x.causes), diagnostic_steps: str(x.diagnostic_steps) })) : [],
     tsbs: Array.isArray(d.tsbs) ? d.tsbs.map((x: any) => ({ tsb_number: str(x.tsb_number), title: str(x.title), summary: str(x.summary), issued_date: str(x.issued_date), fitment_level: (x.fitment_level ?? "possible") })) : [],
     recalls: Array.isArray(d.recalls) ? d.recalls.map((x: any) => ({ recall_id: str(x.recall_id), status: str(x.status), title: str(x.title), summary: str(x.summary) })) : [],
-    wiring: Array.isArray(d.wiring) ? d.wiring.map((w: any) => ({ circuit: str(w.circuit), drawing_ref: str(w.drawing_ref), description: str(w.description), circuits: Array.isArray(w.circuits) ? w.circuits.map((c: any) => ({ name: str(c.name), wire: str(c.wire), pin: str(c.pin), color: str(c.color) })) : [] })) : [],
+    wiring: Array.isArray(d.wiring) ? d.wiring.map((w: any) => ({ circuit: str(w.circuit), drawing_ref: str(w.drawing_ref), description: str(w.description), circuits: Array.isArray(w.circuits) ? w.circuits.map((c: any) => ({ name: str(c.name), wire: str(c.wire), pin: str(c.pin), color: str(c.color) })) : [], images: Array.isArray(w.images) ? w.images.map((im: any) => ({ id: Number(im.id), seq: num(im.seq) ?? 0, mime: str(im.mime) ?? 'image/jpeg', url: str(im.url) ?? '' })) : [] })) : [],
     components: Array.isArray(d.components) ? d.components.map((c: any) => ({ component: str(c.component) ?? "", location: str(c.location), notes: str(c.notes) })) : [],
     maintenance: Array.isArray(d.maintenance) ? d.maintenance.map((m: any) => ({ service: str(m.service) ?? "", interval_miles: num(m.interval_miles), interval_months: num(m.interval_months), note: str(m.note) })) : [],
     notes: Array.isArray(d.notes) ? d.notes.map(normNote) : [],
@@ -392,7 +392,8 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
     title: procTitle(p), summary: procPath(p) || p.summary || "", fitment: p.fitment_level, source: p.source || "—",
     meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
   });
-  const procMatches = b.procedures.filter(p => hit(p.title) || hit(p.summary || "") || hit(p.system || ""));
+  const allProcQuery = /^procedures?$/.test(q);
+  const procMatches = b.procedures.filter(p => allProcQuery || hit(p.title) || hit(p.summary || "") || hit(p.system || ""));
   const bySys: Record<string, RVProcedure[]> = {};
   const flatProcs: RVProcedure[] = [];
   for (const p of procMatches) {
