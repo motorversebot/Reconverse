@@ -50,6 +50,7 @@ const STYLE = `
 .rv-chip{transition:.14s}
 .rv-chip:hover{border-color:var(--rv-accent)!important}
 .rv-wire-img{width:100%;height:auto;display:block;border-radius:8px}
+.rv-fig-img{max-width:100%;max-height:440px;height:auto;border-radius:8px;border:1px solid #e6e8eb;background:#fff;cursor:zoom-in}
 `;
 
 function css(str: string): React.CSSProperties {
@@ -349,6 +350,17 @@ export default function RepairResearchPage() {
             <div style={{ ...css("border:1px solid;border-radius:11px;padding:12px 16px;margin-bottom:24px"), borderColor: t.border, background: t.surface }}>
               <span style={{ ...css("font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase"), color: t.fg3 }}>Warnings / cautions</span>
               <span style={{ ...css("display:block;font-size:13px;margin-top:6px"), color: t.fg3 }}>No warnings or cautions recorded for this procedure.</span>
+            </div>
+          )}
+
+          {(procDetail?.images?.length ?? 0) > 0 && (
+            <div style={{ ...css("border:1px solid;border-radius:12px;padding:14px 16px;margin-bottom:24px"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
+              <span style={{ ...css("display:block;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px"), color: t.fg }}>Figures</span>
+              <div style={css("display:flex;flex-wrap:wrap;gap:12px")}>
+                {procDetail!.images.map((im, i) => (
+                  <AuthImage key={i} src={im.url} alt={`figure ${i + 1}`} className="rv-fig-img" />
+                ))}
+              </div>
             </div>
           )}
 

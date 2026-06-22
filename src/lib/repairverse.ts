@@ -73,6 +73,7 @@ export interface RVProcedureDetail {
   warnings: RVWarning[];
   parts: RVPart[];
   specs: RVSpec[];
+  images: { id: number; seq: number; mime: string; url: string }[];
 }
 
 export interface RVLaborOp { operation: string; hours: number | null; note: string | null; }
@@ -270,6 +271,7 @@ function normProcedureDetail(p: any): RVProcedureDetail {
     warnings: Array.isArray(p.warnings) ? p.warnings.map((w: any) => ({ severity: str(w.severity) ?? "warning", body: str(w.body) ?? "" })) : [],
     parts: Array.isArray(p.parts) ? p.parts.map((pt: any) => ({ part_number: str(pt.part_number), description: str(pt.description), qty: str(pt.qty) })) : [],
     specs: Array.isArray(p.specs) ? p.specs.map(normSpec) : [],
+    images: Array.isArray(p.images) ? p.images.map((im: any) => ({ id: Number(im.id), seq: num(im.seq) ?? 0, mime: str(im.mime) ?? "image/jpeg", url: str(im.url) ?? "" })) : [],
   };
 }
 
