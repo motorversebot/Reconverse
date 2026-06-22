@@ -15,7 +15,7 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import {
   Search, Wrench, Clock, Gauge, Droplets, Cable, Activity, FileText,
-  AlertTriangle, MapPin, CalendarClock, StickyNote, Package, type LucideIcon,
+  AlertTriangle, MapPin, CalendarClock, StickyNote, Package, RotateCcw, type LucideIcon,
 } from "lucide-react";
 import {
   getResearchBundle, getProcedureDetail, getCompare, searchBundle, isKnownQuery, saveShopNote,
@@ -80,7 +80,7 @@ export default function RepairResearchPage() {
   const [cmpQ, setCmpQ] = useState("");
   const noteForm = useRef<{ pattern: string; term: string; body: string }>({ pattern: "", term: "", body: "" });
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const vehicleId = searchParams.get("vehicle_id");
   const { data: bundle } = useQuery({
     queryKey: ["repairverse", "research", vehicleId],
@@ -116,6 +116,7 @@ export default function RepairResearchPage() {
 
   const runSearch = (q: string) => { if (!q.trim()) return; setQuery(q); setFilter("all"); setView("results"); };
   const onKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") runSearch(query); };
+  const changeVehicle = () => { setQuery(""); setView("home"); setSearchParams({}); };
 
   if (!vehicleId) return <RepairverseLanding />;
 
@@ -179,6 +180,9 @@ export default function RepairResearchPage() {
           <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px"), color: t.fg2 }}>{v.engine}</span>
           {v.ro_number && <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px"), color: t.fg3 }}>{v.ro_number}</span>}
         </div>
+        <button onClick={changeVehicle} title="Start over with a different vehicle" className="rv-tab" style={{ ...css("display:flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:9px;font-size:12px;font-weight:600;border:1px solid;cursor:pointer"), borderColor: t.border, background: t.surface2, color: t.fg2 }}>
+          <RotateCcw size={13} /> Change vehicle
+        </button>
         <div style={css("position:relative;flex:1;min-width:200px;max-width:440px")}>
           <Search size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: t.fg3, pointerEvents: "none" }} />
           <input className="rv-input" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={onKey} placeholder="Search this vehicle…"
