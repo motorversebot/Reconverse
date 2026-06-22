@@ -9,6 +9,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import RepairverseLanding from "@/components/dealer/RepairverseLanding";
+import AuthImage from "@/components/dealer/AuthImage";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ const STYLE = `
 .rv-btng:hover{border-color:var(--rv-accent)!important;color:var(--rv-accent)!important}
 .rv-chip{transition:.14s}
 .rv-chip:hover{border-color:var(--rv-accent)!important}
+.rv-wire-img{width:100%;height:auto;display:block;border-radius:8px}
 `;
 
 function css(str: string): React.CSSProperties {
@@ -492,32 +494,28 @@ export default function RepairResearchPage() {
         <div className="rv-fade" style={css("max-width:940px;margin:0 auto;padding:26px 22px 70px")}>
           <h1 style={{ ...css("font-size:24px;letter-spacing:-.5px;font-weight:700;margin:0 0 4px"), color: t.fg }}>Wiring &amp; Diagrams</h1>
           <p style={{ ...css("font-size:13px;margin:0 0 20px"), color: t.fg2 }}>{v.full}</p>
-          {b.wiring.map((w, wi) => (
-            <div key={wi} style={css("display:grid;grid-template-columns:1.4fr .8fr;gap:20px;align-items:start;margin-bottom:20px")}>
-              <div style={{ ...css("border:1px solid;border-radius:14px;overflow:hidden"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
-                <div style={{ ...css("display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid"), borderColor: t.border }}>
-                  <span style={{ ...css("font-size:13px;font-weight:600"), color: t.fg }}>{w.description}</span>
+          {b.wiring.length === 0 ? (
+            <div style={{ ...css("text-align:center;padding:48px 20px;border:1px dashed;border-radius:14px"), borderColor: t.border, background: t.surface }}>
+              <p style={{ ...css("font-size:13.5px;margin:0"), color: t.fg2 }}>No wiring diagrams ingested for this vehicle yet.</p>
+            </div>
+          ) : b.wiring.map((w, wi) => {
+            const imgs = (w as { images?: { id: number; url: string; mime?: string }[] }).images || [];
+            return (
+              <div key={wi} style={{ ...css("border:1px solid;border-radius:14px;overflow:hidden;margin-bottom:16px"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
+                <div style={{ ...css("display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid"), borderColor: t.border }}>
+                  <span style={{ ...css("font-size:13.5px;font-weight:600"), color: t.fg }}>{w.description || w.circuit}</span>
                   <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px"), color: t.fg3 }}>{w.drawing_ref}</span>
                 </div>
-                <div style={{ ...css("height:300px;display:flex;align-items:center;justify-content:center"), background: `repeating-linear-gradient(45deg,${t.surface2},${t.surface2} 11px,${t.bg} 11px,${t.bg} 22px)` }}>
-                  <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 14px;border-radius:8px;border:1px solid"), color: t.fg3, background: t.surface, borderColor: t.border }}>[ {w.circuit} — schematic ]</span>
+                <div style={{ ...css("padding:14px;display:flex;flex-direction:column;gap:12px"), background: "#ffffff" }}>
+                  {imgs.length ? imgs.map((im, ii) => (
+                    <AuthImage key={ii} src={im.url} alt={w.description || w.circuit} className="rv-wire-img" />
+                  )) : (
+                    <div style={{ ...css("height:160px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px"), color: "#9aa1ab" }}>No diagram image stored</div>
+                  )}
                 </div>
               </div>
-              <div style={{ ...css("border:1px solid;border-radius:14px;padding:16px"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
-                <span style={{ ...css("display:block;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px"), color: t.fg }}>Circuit legend</span>
-                {w.circuits.map((c, i) => (
-                  <div key={i} style={{ ...css("display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid"), borderColor: t.border }}>
-                    <span style={{ ...css("width:22px;height:5px;border-radius:3px;flex:none"), background: c.color || t.fg3 }} />
-                    <div style={css("flex:1")}>
-                      <span style={{ ...css("display:block;font-size:12.5px;font-weight:500"), color: t.fg }}>{c.name}</span>
-                      <span style={{ ...css("display:block;font-family:'IBM Plex Mono',monospace;font-size:11px"), color: t.fg3 }}>{c.wire}</span>
-                    </div>
-                    <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11.5px"), color: t.fg2 }}>{c.pin}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
