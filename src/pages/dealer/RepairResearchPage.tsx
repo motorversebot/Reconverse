@@ -247,7 +247,7 @@ export default function RepairResearchPage() {
           <h1 style={{ ...css("font-size:22px;letter-spacing:-.5px;font-weight:700;margin:0"), color: t.fg }}>Results for "{query}"</h1>
           <p style={{ ...css("font-size:13px;margin:4px 0 20px"), color: t.fg2 }}>{known ? `${totalResults} results · ${v.short}` : ""}</p>
 
-          {!known || totalResults === 0 ? (
+          {totalResults === 0 ? (
             <div style={{ ...css("text-align:center;padding:56px 20px;border:1px dashed;border-radius:16px"), borderColor: t.border, background: t.surface }}>
               <h2 style={{ ...css("font-size:18px;font-weight:600;margin:0 0 6px"), color: t.fg }}>No results on this vehicle</h2>
               <p style={{ ...css("font-size:13.5px;max-width:380px;margin:0 auto 18px"), color: t.fg2 }}>Nothing matched "{query}" for the {v.short}. Try a broader term.</p>

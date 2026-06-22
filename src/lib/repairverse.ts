@@ -434,6 +434,7 @@ export const RV_KNOWN_TERMS = ["brake", "rotor", "pad", "caliper", "oil", "fluid
   "water pump", "blower", "adas", "torque", "transmission", "spec", "wheel", "sensor", "filter",
   "recall", "tsb", "maintenance", "procedure", "diagnos", "bumper", "battery", "calibrat"];
 export function isKnownQuery(q: string): boolean {
-  const l = (q || "").toLowerCase();
+  const l = (q || "").toLowerCase().trim();
+  if (/^[pbcu][0-9][0-9a-f]{2,3}$/i.test(l)) return true; // DTC code (P0420, B0020, U1000...)
   return RV_KNOWN_TERMS.some(w => l.includes(w));
 }
