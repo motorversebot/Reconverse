@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import {
   getResearchBundle, getProcedureDetail, getCompare, searchBundle, isKnownQuery, saveShopNote,
-  type FitmentLevel, type ResearchBundle,
+  buildLaborComparison, sourcesPresent, srcBucket,
+  type FitmentLevel, type ResearchBundle, type SourceKey,
 } from "@/lib/repairverse";
 
 type View = "home" | "results" | "procedure" | "labor" | "tsb" | "wiring" | "notes" | "compare" | "parts";
@@ -108,8 +109,14 @@ export default function RepairResearchPage() {
   };
   const chip = (active: boolean) => css(`padding:8px 15px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid ${active ? t.accent : t.border};background:${active ? t.accentSoft : t.surface};color:${active ? t.accent : t.fg2}`);
 
+  const SOURCE_TABS: [string, string][] = [["all", "All Sources"], ["alldata", "ALLDATA"], ["prodemand", "ProDemand"], ["oem", "OEM / ESM"], ["internal", "Shop Notes"]];
+  const [sourceTab, setSourceTab] = useState<SourceKey | "all">("all");
+  const present = useMemo(() => (b ? sourcesPresent(b) : new Set<SourceKey>()), [b]);
+  const laborComparison = useMemo(() => (b ? buildLaborComparison(b.labor) : []), [b]);
+  const laborShown = useMemo(() => (b ? (sourceTab === "all" ? b.labor : b.labor.filter((o) => srcBucket(o.source) === sourceTab)) : []), [b, sourceTab]);
+  const srcLabel = (sn: string | null) => (({ alldata: "ALLDATA", prodemand: "ProDemand", oem: "OEM/ESM", internal: "Internal" }) as Record<string, string>)[srcBucket(sn)];
   const known = isKnownQuery(query);
-  const groups = useMemo(() => (b ? searchBundle(b, query, fitment) : []), [b, query, fitment]);
+  const groups = useMemo(() => (b ? searchBundle(b, query, fitment, sourceTab) : []), [b, query, fitment, sourceTab]);
   const shownGroups = groups.filter((g) => filter === "all" || g.category === filter);
   const totalResults = groups.reduce((a, g) => a + g.items.length, 0);
   const cats = ["all", ...groups.map((g) => g.category)];
@@ -197,6 +204,21 @@ export default function RepairResearchPage() {
         {!b.available && (
           <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;border-radius:6px"), color: t.possible, background: `${t.possible}1f` }} title="MC endpoints not live yet — showing labeled seed data">SEED DATA</span>
         )}
+      </div>
+
+      {/* ===== SOURCE TABS ===== */}
+      <div style={{ ...css("display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:9px 22px;border-bottom:1px solid"), borderColor: t.border, background: t.bg }}>
+        <span style={{ ...css("font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-right:3px"), color: t.fg3 }}>Sources</span>
+        {SOURCE_TABS.map(([key, label]) => {
+          const active = sourceTab === key;
+          const has = key === "all" || present.has(key as SourceKey);
+          return (
+            <button key={key} onClick={() => { setSourceTab(key as SourceKey | "all"); if (view === "results") runSearch(query); }} title={has ? "" : "No " + label + " data yet"}
+              style={{ ...css("height:30px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid"), borderColor: active ? t.accent : t.border, background: active ? t.accentSoft : t.surface, color: active ? t.accent : (has ? t.fg2 : t.fg3), opacity: has ? 1 : 0.6 }}>
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ===== HOME ===== */}
@@ -419,14 +441,41 @@ export default function RepairResearchPage() {
         <div className="rv-fade" style={css("max-width:900px;margin:0 auto;padding:26px 22px 70px")}>
           <h1 style={{ ...css("font-size:24px;letter-spacing:-.5px;font-weight:700;margin:0 0 4px"), color: t.fg }}>Labor &amp; Specs</h1>
           <p style={{ ...css("font-size:13px;margin:0 0 24px"), color: t.fg2 }}>{v.full}</p>
+          {sourceTab === "all" && (
+            <div style={css("margin-bottom:30px")}>
+              <h2 style={{ ...css("font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0 0 12px"), color: t.fg }}>Labor comparison<span style={{ ...css("font-weight:600;margin-left:7px"), color: t.fg3 }}>ALLDATA vs ProDemand</span></h2>
+              <div style={{ ...css("border:1px solid;border-radius:13px;overflow:hidden"), borderColor: t.border, boxShadow: t.shadow }}>
+                <div style={{ ...css("display:grid;grid-template-columns:1fr 78px 86px 64px 124px;gap:10px;padding:10px 16px"), background: t.surface2 }}>
+                  {["Operation", "ALLDATA", "ProDemand", "Diff", "Status"].map((h, i) => <span key={i} style={{ ...css("font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase"), color: t.fg3, textAlign: (i >= 1 && i <= 3) ? "right" : "left" }}>{h}</span>)}
+                </div>
+                {laborComparison.length === 0 ? (
+                  <div style={{ ...css("padding:18px 16px;font-size:13px"), color: t.fg2 }}>No labor operations stored yet.</div>
+                ) : laborComparison.slice(0, 250).map((r, i) => {
+                  const sc = r.status === "Same" ? t.accent : r.status === "Higher in ALLDATA" ? "#4a9eff" : r.status === "Higher in ProDemand" ? t.possible : t.fg3;
+                  return (
+                    <div key={i} style={{ ...css("display:grid;grid-template-columns:1fr 78px 86px 64px 124px;gap:10px;padding:12px 16px;border-top:1px solid;align-items:center"), borderColor: t.border, background: t.surface }}>
+                      <span style={{ ...css("font-size:13px"), color: t.fg }}>{r.operation}</span>
+                      <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600"), color: t.fg, textAlign: "right" }}>{r.alldata != null ? r.alldata : "\u2014"}</span>
+                      <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600"), color: r.prodemand != null ? t.fg : t.fg3, textAlign: "right" }}>{r.prodemand != null ? r.prodemand : "\u2014"}</span>
+                      <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:12.5px"), color: t.fg2, textAlign: "right" }}>{r.diff != null ? (r.diff > 0 ? "+" : "") + r.diff : "\u2014"}</span>
+                      <span style={{ ...css("font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;justify-self:start"), color: sc, background: sc + "1f" }}>{r.status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ ...css("font-size:11.5px;margin:9px 2px 0"), color: t.fg3 }}>ProDemand hours populate here once its source agent ingests. Operations are matched on normalized text.</p>
+            </div>
+          )}
           <h2 style={{ ...css("font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0 0 12px"), color: t.fg }}>Labor operations</h2>
           <div style={{ ...css("border:1px solid;border-radius:13px;overflow:hidden;margin-bottom:28px"), borderColor: t.border, boxShadow: t.shadow }}>
             <div style={{ ...css("display:grid;grid-template-columns:1fr 90px 1.1fr;gap:12px;padding:11px 16px"), background: t.surface2 }}>
               {["Operation", "Hours", "Notes"].map((h, i) => <span key={i} style={{ ...css("font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase"), color: t.fg3, textAlign: i === 1 ? "right" : "left" }}>{h}</span>)}
             </div>
-            {b.labor.map((o, i) => (
+            {laborShown.length === 0 ? (
+              <div style={{ ...css("padding:18px 16px;font-size:13px"), color: t.fg2 }}>No {sourceTab === "all" ? "" : (SOURCE_TABS.find(([k]) => k === sourceTab)?.[1] || "") + " "}labor data yet.</div>
+            ) : laborShown.map((o, i) => (
               <div key={i} style={{ ...css("display:grid;grid-template-columns:1fr 90px 1.1fr;gap:12px;padding:13px 16px;border-top:1px solid;align-items:center"), borderColor: t.border, background: t.surface }}>
-                <span style={{ ...css("font-size:13.5px;font-weight:500"), color: t.fg }}>{o.operation}</span>
+                <span style={{ ...css("font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;flex-wrap:wrap"), color: t.fg }}>{o.operation}<span style={{ ...css("font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.3px"), color: t.fg3, background: t.surface2 }}>{srcLabel(o.source)}</span></span>
                 <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600"), color: t.accent, textAlign: "right" }}>{o.hours}</span>
                 <span style={{ ...css("font-size:12.5px"), color: t.fg2 }}>{o.note}</span>
               </div>

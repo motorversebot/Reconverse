@@ -38,7 +38,7 @@ export interface RVVehicle {
 
 export interface RVStep { step_no: number; title: string; body: string; }
 export interface RVWarning { severity: string; body: string; }
-export interface RVPart { part_number: string | null; description: string | null; qty: string | null; }
+export interface RVPart { part_number: string | null; description: string | null; qty: string | null; source: string | null; }
 export interface RVSpec { kind: "torque" | "fluid" | "general"; name: string; value: string | null; }
 
 /** Procedure HEADER — returned in the research bundle (lightweight + counts). */
@@ -76,7 +76,7 @@ export interface RVProcedureDetail {
   images: { id: number; seq: number; mime: string; url: string }[];
 }
 
-export interface RVLaborOp { operation: string; hours: number | null; note: string | null; }
+export interface RVLaborOp { operation: string; hours: number | null; note: string | null; source: string | null; }
 export interface RVDtc { code: string; description: string | null; system: string | null; causes: string | null; diagnostic_steps: string | null; }
 export interface RVTsb { tsb_number: string | null; title: string | null; summary: string | null; issued_date: string | null; fitment_level: FitmentLevel; }
 export interface RVRecall { recall_id: string | null; status: string | null; title: string | null; summary: string | null; }
@@ -287,8 +287,8 @@ function normBundle(d: any): ResearchBundle {
     available: true,
     vehicle: normVehicle(d.vehicle ?? {}),
     procedures: Array.isArray(d.procedures) ? d.procedures.map(normProcedure) : [],
-    labor: Array.isArray(d.labor) ? d.labor.map((o: any) => ({ operation: str(o.operation) ?? "", hours: num(o.hours), note: str(o.note) })) : [],
-    parts: Array.isArray(d.parts) ? d.parts.map((p: any) => ({ part_number: str(p.part_number), description: str(p.description), qty: str(p.qty) })) : [],
+    labor: Array.isArray(d.labor) ? d.labor.map((o: any) => ({ operation: str(o.operation) ?? "", hours: num(o.hours), note: str(o.note), source: str(o.source) ?? "ALLDATA" })) : [],
+    parts: Array.isArray(d.parts) ? d.parts.map((p: any) => ({ part_number: str(p.part_number), description: str(p.description), qty: str(p.qty), source: str(p.source) ?? "ALLDATA" })) : [],
     specs: Array.isArray(d.specs) ? d.specs.map(normSpec) : [],
     dtcs: Array.isArray(d.dtcs) ? d.dtcs.map((x: any) => ({ code: str(x.code) ?? "", description: str(x.description), system: str(x.system), causes: str(x.causes), diagnostic_steps: str(x.diagnostic_steps) })) : [],
     tsbs: Array.isArray(d.tsbs) ? d.tsbs.map((x: any) => ({ tsb_number: str(x.tsb_number), title: str(x.title), summary: str(x.summary), issued_date: str(x.issued_date), fitment_level: (x.fitment_level ?? "possible") })) : [],
@@ -368,8 +368,9 @@ export async function saveShopNote(input: ShopNoteInput): Promise<{ ok: boolean;
 
 // Client-side search over a loaded bundle.
 export interface ResultItem { title: string; summary: string; fitment: FitmentLevel; source: string; meta: string; target: string; procId?: number; }
-export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | FitmentLevel = "all") {
+export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | FitmentLevel = "all", source: SourceKey | "all" = "all") {
   const q = (query || "").toLowerCase().trim();
+  const srcOk = (name: string | null | undefined) => source === "all" || srcBucket(name) === source;
   const hit = (s: string) => !q || s.toLowerCase().includes(q);
   const groups: { category: string; items: ResultItem[] }[] = [];
   const push = (category: string, items: ResultItem[]) => { const f = items.filter(i => fitment === "all" || i.fitment === fitment); if (f.length) groups.push({ category, items: f }); };
@@ -396,7 +397,7 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
     meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
   });
   const allProcQuery = /^procedures?$/.test(q);
-  const procMatches = b.procedures.filter(p => allProcQuery || hit(p.title) || hit(p.summary || "") || hit(p.system || ""));
+  const procMatches = b.procedures.filter(p => srcOk(p.source) && (allProcQuery || hit(p.title) || hit(p.summary || "") || hit(p.system || "")));
   const bySys: Record<string, RVProcedure[]> = {};
   const flatProcs: RVProcedure[] = [];
   for (const p of procMatches) {
@@ -409,22 +410,22 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
     push(sys, bySys[sys].slice().sort((a, b2) => procRank(b2) - procRank(a)).map(procItem));
   }
   if (flatProcs.length) push("Procedures", flatProcs.slice().sort((a, b2) => procRank(b2) - procRank(a)).map(procItem));
-  push("Labor", b.labor.filter(o => hit(o.operation)).map(o => ({
+  push("Labor", b.labor.filter(o => srcOk(o.source) && hit(o.operation)).map(o => ({
     title: o.operation, summary: o.note || "", fitment: "exact", source: "Labor Guide", meta: o.hours != null ? `${o.hours} hr` : "", target: "labor",
   })));
-  push("Specs", b.specs.filter(s => hit(s.name)).map(s => ({
+  push("Specs", b.specs.filter(s => srcOk("ALLDATA") && hit(s.name)).map(s => ({
     title: s.name, summary: s.value || "", fitment: "exact", source: "OEM", meta: s.kind, target: "labor",
   })));
-  push("DTCs", b.dtcs.filter(d => hit(d.code) || hit(d.description || "")).map(d => ({
+  push("DTCs", b.dtcs.filter(d => srcOk("ALLDATA") && (hit(d.code) || hit(d.description || ""))).map(d => ({
     title: `${d.code} — ${d.description || ""}`.trim(), summary: d.causes || "", fitment: "possible", source: "OEM", meta: d.system || "", target: "results",
   })));
-  push("TSBs", b.tsbs.filter(t => hit(t.title || "") || hit(t.tsb_number || "")).map(t => ({
+  push("TSBs", b.tsbs.filter(t => srcOk("ALLDATA") && (hit(t.title || "") || hit(t.tsb_number || ""))).map(t => ({
     title: t.title || t.tsb_number || "", summary: t.summary || "", fitment: t.fitment_level, source: "TSB", meta: t.tsb_number || "", target: "tsb",
   })));
-  push("Wiring", b.wiring.filter(w => hit(w.description || "") || hit(w.circuit || "")).map(w => ({
+  push("Wiring", b.wiring.filter(w => srcOk((w as any).source) && (hit(w.description || "") || hit(w.circuit || ""))).map(w => ({
     title: w.description || w.circuit || "", summary: "ABS speed sensor wiring, connector pinout, and resistance values.", fitment: "generic", source: "OEM Wiring", meta: w.drawing_ref || "", target: "wiring",
   })));
-  push("Shop Notes", b.notes.filter(n => hit(n.body) || hit(n.related_term || "")).map(n => ({
+  push("Shop Notes", b.notes.filter(n => srcOk("internal") && (hit(n.body) || hit(n.related_term || ""))).map(n => ({
     title: n.related_term || "Shop note", summary: n.body, fitment: "exact", source: `Shop Note · ${n.author || ""}`.trim(), meta: n.created_at || "", target: "notes",
   })));
   return groups;
@@ -437,4 +438,60 @@ export function isKnownQuery(q: string): boolean {
   const l = (q || "").toLowerCase().trim();
   if (/^[pbcu][0-9][0-9a-f]{2,3}$/i.test(l)) return true; // DTC code (P0420, B0020, U1000...)
   return RV_KNOWN_TERMS.some(w => l.includes(w));
+}
+
+
+// ---- Source attribution + cross-source comparison (ALLDATA vs ProDemand vs OEM) ----
+export type SourceKey = "alldata" | "prodemand" | "oem" | "internal";
+export const SOURCE_LABELS: Record<SourceKey, string> = { alldata: "ALLDATA", prodemand: "ProDemand", oem: "OEM / ESM", internal: "Internal" };
+export function srcBucket(name: string | null | undefined): SourceKey {
+  const n = (name || "").toLowerCase();
+  if (/prodemand|mitchell/.test(n)) return "prodemand";
+  if (/esm|oem|nissan|factory/.test(n)) return "oem";
+  if (/shop|internal|note/.test(n)) return "internal";
+  return "alldata"; // default: current aftermarket data
+}
+const STOP = new Set(["and","or","the","a","of","to","for","with","r","&","-"]);
+export function normalizeOp(op: string): string {
+  const toks = (op || "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").split(/\s+/)
+    .map((t) => t.replace(/s$/, "")).filter((t) => t && !STOP.has(t));
+  return Array.from(new Set(toks)).sort().join(" ");
+}
+export type LaborCompareRow = { operation: string; alldata: number | null; prodemand: number | null; oem: number | null; diff: number | null; diffPct: number | null; status: string };
+export function buildLaborComparison(labor: RVLaborOp[]): LaborCompareRow[] {
+  const groups: Record<string, { op: string; alldata: number | null; prodemand: number | null; oem: number | null }> = {};
+  for (const o of labor) {
+    const key = normalizeOp(o.operation); if (!key) continue;
+    const g = (groups[key] = groups[key] || { op: o.operation, alldata: null, prodemand: null, oem: null });
+    const bucket = srcBucket(o.source);
+    if (o.hours != null && (bucket === "alldata" || bucket === "prodemand" || bucket === "oem")) {
+      if (g[bucket] == null) g[bucket] = o.hours;
+    }
+  }
+  const rows = Object.values(groups).map((g) => {
+    const a = g.alldata, p = g.prodemand, oem = g.oem;
+    let status = "Needs Review", diff: number | null = null, diffPct: number | null = null;
+    if (a != null && p != null) {
+      diff = Math.round((a - p) * 100) / 100;
+      diffPct = p ? Math.round(((a - p) / p) * 100) : null;
+      status = Math.abs(a - p) <= 0.1 ? "Same" : a > p ? "Higher in ALLDATA" : "Higher in ProDemand";
+    } else if (a != null) status = "Missing ProDemand";
+    else if (p != null) status = "Missing ALLDATA";
+    return { operation: g.op, alldata: a, prodemand: p, oem, diff, diffPct, status };
+  });
+  // duplicates (have >1 source) first, then by operation
+  return rows.sort((x, y) => (srcCount(y) - srcCount(x)) || x.operation.localeCompare(y.operation));
+}
+function srcCount(r: { alldata: number | null; prodemand: number | null; oem: number | null }): number {
+  return (r.alldata != null ? 1 : 0) + (r.prodemand != null ? 1 : 0) + (r.oem != null ? 1 : 0);
+}
+// which source buckets actually have data in this bundle
+export function sourcesPresent(b: ResearchBundle): Set<SourceKey> {
+  const set = new Set<SourceKey>();
+  for (const o of b.labor) set.add(srcBucket(o.source));
+  for (const p of b.parts) set.add(srcBucket(p.source));
+  for (const pr of b.procedures) set.add(srcBucket(pr.source));
+  for (const w of b.wiring) set.add(srcBucket((w as any).source));
+  if (b.notes && b.notes.length) set.add("internal");
+  return set;
 }
