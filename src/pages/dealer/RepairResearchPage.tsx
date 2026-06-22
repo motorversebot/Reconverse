@@ -15,14 +15,14 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import {
   Search, Wrench, Clock, Gauge, Droplets, Cable, Activity, FileText,
-  AlertTriangle, MapPin, CalendarClock, StickyNote, type LucideIcon,
+  AlertTriangle, MapPin, CalendarClock, StickyNote, Package, type LucideIcon,
 } from "lucide-react";
 import {
   getResearchBundle, getProcedureDetail, getCompare, searchBundle, isKnownQuery, saveShopNote,
   type FitmentLevel, type ResearchBundle,
 } from "@/lib/repairverse";
 
-type View = "home" | "results" | "procedure" | "labor" | "tsb" | "wiring" | "notes" | "compare";
+type View = "home" | "results" | "procedure" | "labor" | "tsb" | "wiring" | "notes" | "compare" | "parts";
 
 const THEMES = {
   light: { bg:"#f7f8f9", surface:"#ffffff", surface2:"#eef0f2", border:"#e6e8eb", border2:"#d6dade", fg:"#15181c", fg2:"#586070", fg3:"#9aa1ab", accent:"#5f9a0c", accentDeep:"#4c7d09", accentFg:"#ffffff", accentSoft:"rgba(95,154,12,0.10)", exact:"#16a34a", possible:"#d97706", generic:"#9aa1ab", warn:"#dc2626", warnBg:"rgba(220,38,38,0.05)", shadow:"0 1px 2px rgba(15,23,42,0.06)", shMd:"0 6px 20px -8px rgba(15,23,42,0.14)", ring:"0 0 0 3px rgba(95,154,12,0.18)" },
@@ -142,6 +142,7 @@ export default function RepairResearchPage() {
     ["Fluids", String(fluids.length), () => setView("labor"), Droplets],
     ["Wiring", String(b.wiring.length), () => setView("wiring"), Cable],
     ["Diagnostics", String(b.dtcs.length), () => runSearch("P0101"), Activity],
+    ["Parts", String(b.parts.length), () => setView("parts"), Package],
     ["TSBs", String(b.tsbs.length), () => setView("tsb"), FileText],
     ["Recalls", String(b.recalls.length), () => setView("tsb"), AlertTriangle],
     ["Component Locations", String(b.components.length), () => runSearch("blower"), MapPin],
@@ -356,7 +357,7 @@ export default function RepairResearchPage() {
           {(procDetail?.images?.length ?? 0) > 0 && (
             <div style={{ ...css("border:1px solid;border-radius:12px;padding:14px 16px;margin-bottom:24px"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
               <span style={{ ...css("display:block;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px"), color: t.fg }}>Figures</span>
-              <div style={css("display:flex;flex-wrap:wrap;gap:12px")}>
+              <div style={css("display:flex;flex-direction:column;gap:14px")}>
                 {procDetail!.images.map((im, i) => (
                   <AuthImage key={i} src={im.url} alt={`figure ${i + 1}`} className="rv-fig-img" />
                 ))}
@@ -454,6 +455,32 @@ export default function RepairResearchPage() {
                 ))}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ===== PARTS ===== */}
+      {view === "parts" && (
+        <div className="rv-fade" style={css("max-width:900px;margin:0 auto;padding:26px 22px 70px")}>
+          <h1 style={{ ...css("font-size:24px;letter-spacing:-.5px;font-weight:700;margin:0 0 4px"), color: t.fg }}>Parts</h1>
+          <p style={{ ...css("font-size:13px;margin:0 0 24px"), color: t.fg2 }}>{v.full} · {b.parts.length} parts</p>
+          {b.parts.length === 0 ? (
+            <div style={{ ...css("text-align:center;padding:48px 20px;border:1px dashed;border-radius:14px"), borderColor: t.border, background: t.surface }}>
+              <p style={{ ...css("font-size:13.5px;margin:0"), color: t.fg2 }}>No parts ingested for this vehicle yet.</p>
+            </div>
+          ) : (
+            <div style={{ ...css("border:1px solid;border-radius:13px;overflow:hidden"), borderColor: t.border, boxShadow: t.shadow }}>
+              <div style={{ ...css("display:grid;grid-template-columns:170px 1fr 60px;gap:12px;padding:11px 16px"), background: t.surface2 }}>
+                {["Part #", "Description", "Qty"].map((h, i) => <span key={i} style={{ ...css("font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase"), color: t.fg3, textAlign: i === 2 ? "right" : "left" }}>{h}</span>)}
+              </div>
+              {b.parts.map((p, i) => (
+                <div key={i} style={{ ...css("display:grid;grid-template-columns:170px 1fr 60px;gap:12px;padding:12px 16px;border-top:1px solid;align-items:center"), borderColor: t.border, background: t.surface }}>
+                  <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600"), color: t.accent }}>{p.part_number || "—"}</span>
+                  <span style={{ ...css("font-size:13px"), color: t.fg }}>{p.description || "—"}</span>
+                  <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:12.5px"), color: t.fg2, textAlign: "right" }}>{p.qty || "1"}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

@@ -91,6 +91,7 @@ export interface ResearchBundle {
   vehicle: RVVehicle;
   procedures: RVProcedure[];
   labor: RVLaborOp[];
+  parts: RVPart[];
   specs: RVSpec[];
   dtcs: RVDtc[];
   tsbs: RVTsb[];
@@ -193,6 +194,7 @@ function toHeader(d: RVProcedureDetail): RVProcedure {
 
 const SEED_BUNDLE: ResearchBundle = {
   available: false,
+  parts: [],
   vehicle: SEED_VEHICLE,
   procedures: SEED_PROC_DETAILS.map(toHeader),
   labor: [
@@ -286,6 +288,7 @@ function normBundle(d: any): ResearchBundle {
     vehicle: normVehicle(d.vehicle ?? {}),
     procedures: Array.isArray(d.procedures) ? d.procedures.map(normProcedure) : [],
     labor: Array.isArray(d.labor) ? d.labor.map((o: any) => ({ operation: str(o.operation) ?? "", hours: num(o.hours), note: str(o.note) })) : [],
+    parts: Array.isArray(d.parts) ? d.parts.map((p: any) => ({ part_number: str(p.part_number), description: str(p.description), qty: str(p.qty) })) : [],
     specs: Array.isArray(d.specs) ? d.specs.map(normSpec) : [],
     dtcs: Array.isArray(d.dtcs) ? d.dtcs.map((x: any) => ({ code: str(x.code) ?? "", description: str(x.description), system: str(x.system), causes: str(x.causes), diagnostic_steps: str(x.diagnostic_steps) })) : [],
     tsbs: Array.isArray(d.tsbs) ? d.tsbs.map((x: any) => ({ tsb_number: str(x.tsb_number), title: str(x.title), summary: str(x.summary), issued_date: str(x.issued_date), fitment_level: (x.fitment_level ?? "possible") })) : [],
