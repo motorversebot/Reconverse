@@ -490,30 +490,40 @@ function parseOp(o: RVLaborOp): { comp: string; op: string } {
 }
 const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
+const GENERIC = new Set(["brake","cover","system","component","control","module","unit","kit","set","assembly","housing","bracket","mount","shield","guard","panel","plate","clip","bolt","nut","seal","gasket","line","pipe","tube","hose","switch","sensor","valve","bearing","pump","motor","relay","actuator"]);
+// component-token overlap, but only "confident" if a non-generic token is shared (so
+// "Caliper"~"CALIPER" matches, while generic "Brakes"~"BRAKE PEDAL" does not).
+function overlapScore(a: string[], b: string[]): number {
+  const B = new Set(b); const shared = a.filter((t) => B.has(t)); const sh = shared.length;
+  if (!sh || !shared.some((t) => !GENERIC.has(t))) return 0;
+  const sm = Math.min(a.length, b.length), un = a.length + b.length - sh;
+  return sh === sm ? 0.9 + sh * 0.01 : sh / un;
+}
+const OP_LABEL: Record<string, string> = { replace: "Replace", "r&i": "R & I", overhaul: "Overhaul", refinish: "Refinish", inspect: "Inspect", adjust: "Adjust", bleed: "Bleed", align: "Align", test: "Test", service: "Service" };
+const cmpLabel = (comp: string, oc: string) => titleCase(comp) + " \u2014 " + (OP_LABEL[oc] || titleCase(oc));
+
 export function buildLaborComparison(labor: RVLaborOp[]): LaborCompareRow[] {
-  const groups: Record<string, { comp: string; op: string; alldata: number | null; prodemand: number | null; oem: number | null }> = {};
-  for (const o of labor) {
-    const { comp, op } = parseOp(o);
-    const ct = compTokens(comp);
-    if (!ct.length) continue;
-    const oc = opCanon(op);
-    const key = ct.join(" ") + "::" + oc;                       // component-tokens + canonical operation
-    const g = (groups[key] = groups[key] || { comp, op: oc, alldata: null, prodemand: null, oem: null });
-    if (comp && comp.length < g.comp.length) g.comp = comp;      // prefer the tidier component label
-    const bucket = srcBucket(o.source);
-    if (o.hours != null && (bucket === "alldata" || bucket === "prodemand" || bucket === "oem") && g[bucket] == null) g[bucket] = o.hours;
-  }
-  const rows = Object.values(groups).map((g) => {
-    const a = g.alldata, p = g.prodemand, oem = g.oem;
+  type It = { tokens: string[]; oc: string; comp: string; hours: number | null };
+  const mk = (o: RVLaborOp): It | null => { const { comp, op } = parseOp(o); const tokens = compTokens(comp); return tokens.length ? { tokens, oc: opCanon(op), comp, hours: o.hours } : null; };
+  const by = (b: SourceKey): It[] => labor.filter((o) => srcBucket(o.source) === b).map(mk).filter((x): x is It => !!x);
+  const ad = by("alldata"), pd = by("prodemand"), oem = by("oem");
+  const usedAd = new Set<number>();
+  const row = (operation: string, a: number | null, p: number | null, om: number | null): LaborCompareRow => {
     let status = "Needs Review", diff: number | null = null, diffPct: number | null = null;
-    if (a != null && p != null) {
-      diff = Math.round((a - p) * 100) / 100;
-      diffPct = p ? Math.round(((a - p) / p) * 100) : null;
-      status = Math.abs(a - p) <= 0.1 ? "Same" : a > p ? "Higher in ALLDATA" : "Higher in ProDemand";
-    } else if (a != null) status = "Missing ProDemand";
+    if (a != null && p != null) { diff = Math.round((a - p) * 100) / 100; diffPct = p ? Math.round(((a - p) / p) * 100) : null; status = Math.abs(a - p) <= 0.1 ? "Same" : a > p ? "Higher in ALLDATA" : "Higher in ProDemand"; }
+    else if (a != null) status = "Missing ProDemand";
     else if (p != null) status = "Missing ALLDATA";
-    return { operation: titleCase(g.comp) + " \u2014 " + titleCase(g.op), alldata: a, prodemand: p, oem, diff, diffPct, status };
-  });
+    return { operation, alldata: a, prodemand: p, oem: om, diff, diffPct, status };
+  };
+  const rows: LaborCompareRow[] = [];
+  for (const p of pd) {
+    let best = -1, bestS = 0.5;
+    for (let i = 0; i < ad.length; i++) { if (usedAd.has(i) || ad[i].oc !== p.oc) continue; const sc = overlapScore(p.tokens, ad[i].tokens); if (sc >= bestS) { bestS = sc; best = i; } }
+    if (best >= 0) { usedAd.add(best); rows.push(row(cmpLabel(ad[best].comp, ad[best].oc), ad[best].hours, p.hours, null)); }
+    else rows.push(row(cmpLabel(p.comp, p.oc), null, p.hours, null));
+  }
+  for (let i = 0; i < ad.length; i++) if (!usedAd.has(i)) rows.push(row(cmpLabel(ad[i].comp, ad[i].oc), ad[i].hours, null, null));
+  for (const o of oem) rows.push(row(cmpLabel(o.comp, o.oc), null, null, o.hours));
   return rows.sort((x, y) => (srcCount(y) - srcCount(x)) || x.operation.localeCompare(y.operation));
 }
 function srcCount(r: { alldata: number | null; prodemand: number | null; oem: number | null }): number {
