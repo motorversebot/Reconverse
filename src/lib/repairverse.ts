@@ -458,15 +458,50 @@ export function normalizeOp(op: string): string {
   return Array.from(new Set(toks)).sort().join(" ");
 }
 export type LaborCompareRow = { operation: string; alldata: number | null; prodemand: number | null; oem: number | null; diff: number | null; diffPct: number | null; status: string };
+// Canonical operation type — collapses ALLDATA/ProDemand synonyms (R&R/Remove & Replace, Reface/Refinish, ...).
+function opCanon(w: string): string {
+  const t = (w || "").toLowerCase();
+  if (/\br\s*&\s*i\b|remove\s*&?\s*and?\s*install|reinstall/.test(t)) return "r&i";
+  if (/\br\s*&\s*r\b|remove\s*&?\s*and?\s*replace|\breplace\b/.test(t)) return "replace";
+  if (/overhaul/.test(t)) return "overhaul";
+  if (/reface|refinish|resurface|machine/.test(t)) return "refinish";
+  if (/inspect/.test(t)) return "inspect";
+  if (/adjust/.test(t)) return "adjust";
+  if (/bleed/.test(t)) return "bleed";
+  if (/align/.test(t)) return "align";
+  if (/test|check/.test(t)) return "test";
+  if (/service|flush|drain|fill/.test(t)) return "service";
+  return t.replace(/[^a-z]+/g, " ").trim().split(" ")[0] || "other";
+}
+const COMP_STOP = new Set(["system","assembly","assy","kit","the","and","or","of","with","w","complete","type","unit","both","side","one","each","note","add","to","front","rear","left","right","lh","rh","upper","lower"]);
+function compTokens(comp: string): string[] {
+  return Array.from(new Set((comp || "").toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9]+/g, " ").split(/\s+/).map((x) => x.replace(/s$/, "")).filter((x) => x.length > 1 && !COMP_STOP.has(x)))).sort();
+}
+// Pull {component, operation} out of each source's distinct naming convention.
+//   ALLDATA   "Operation - System - Component, Abbrev - Qualifier"
+//   ProDemand "Group - Subgroup - COMPONENT - Operation"
+function parseOp(o: RVLaborOp): { comp: string; op: string } {
+  const segs = (o.operation || "").split(/\s+-\s+/).map((x) => x.trim()).filter(Boolean);
+  if (srcBucket(o.source) === "prodemand") return { op: segs[segs.length - 1] || "", comp: segs[segs.length - 2] || "" };
+  const op = segs[0] || "";
+  const cseg = segs.find((x) => x.includes(","));
+  const comp = cseg ? cseg.split(",")[0].trim() : (segs[2] || segs[segs.length - 1] || "");
+  return { comp, op };
+}
+const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+
 export function buildLaborComparison(labor: RVLaborOp[]): LaborCompareRow[] {
-  const groups: Record<string, { op: string; alldata: number | null; prodemand: number | null; oem: number | null }> = {};
+  const groups: Record<string, { comp: string; op: string; alldata: number | null; prodemand: number | null; oem: number | null }> = {};
   for (const o of labor) {
-    const key = normalizeOp(o.operation); if (!key) continue;
-    const g = (groups[key] = groups[key] || { op: o.operation, alldata: null, prodemand: null, oem: null });
+    const { comp, op } = parseOp(o);
+    const ct = compTokens(comp);
+    if (!ct.length) continue;
+    const oc = opCanon(op);
+    const key = ct.join(" ") + "::" + oc;                       // component-tokens + canonical operation
+    const g = (groups[key] = groups[key] || { comp, op: oc, alldata: null, prodemand: null, oem: null });
+    if (comp && comp.length < g.comp.length) g.comp = comp;      // prefer the tidier component label
     const bucket = srcBucket(o.source);
-    if (o.hours != null && (bucket === "alldata" || bucket === "prodemand" || bucket === "oem")) {
-      if (g[bucket] == null) g[bucket] = o.hours;
-    }
+    if (o.hours != null && (bucket === "alldata" || bucket === "prodemand" || bucket === "oem") && g[bucket] == null) g[bucket] = o.hours;
   }
   const rows = Object.values(groups).map((g) => {
     const a = g.alldata, p = g.prodemand, oem = g.oem;
@@ -477,9 +512,8 @@ export function buildLaborComparison(labor: RVLaborOp[]): LaborCompareRow[] {
       status = Math.abs(a - p) <= 0.1 ? "Same" : a > p ? "Higher in ALLDATA" : "Higher in ProDemand";
     } else if (a != null) status = "Missing ProDemand";
     else if (p != null) status = "Missing ALLDATA";
-    return { operation: g.op, alldata: a, prodemand: p, oem, diff, diffPct, status };
+    return { operation: titleCase(g.comp) + " \u2014 " + titleCase(g.op), alldata: a, prodemand: p, oem, diff, diffPct, status };
   });
-  // duplicates (have >1 source) first, then by operation
   return rows.sort((x, y) => (srcCount(y) - srcCount(x)) || x.operation.localeCompare(y.operation));
 }
 function srcCount(r: { alldata: number | null; prodemand: number | null; oem: number | null }): number {
