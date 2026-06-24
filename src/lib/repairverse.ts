@@ -490,7 +490,7 @@ function parseOp(o: RVLaborOp): { comp: string; op: string } {
 }
 const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
-const GENERIC = new Set(["brake","cover","system","component","control","module","unit","kit","set","assembly","housing","bracket","mount","shield","guard","panel","plate","clip","bolt","nut","seal","gasket","line","pipe","tube","hose","switch","sensor","valve","bearing","pump","motor","relay","actuator","cable"]);
+const GENERIC = new Set(["brake","cover","system","component","control","module","unit","kit","set","assembly","housing","bracket","mount","shield","guard","panel","plate","clip","bolt","nut","seal","gasket","line","pipe","tube","hose","switch","sensor","valve","bearing","pump","motor","relay","actuator","cable","solenoid","heater"]);
 // component-token overlap, but only "confident" if a non-generic token is shared (so
 // "Caliper"~"CALIPER" matches, while generic "Brakes"~"BRAKE PEDAL" does not).
 function overlapScore(a: string[], b: string[]): number {
@@ -499,6 +499,16 @@ function overlapScore(a: string[], b: string[]): number {
   const sm = Math.min(a.length, b.length), un = a.length + b.length - sh;
   return sh === sm ? 0.9 + sh * 0.01 : sh / un;
 }
+// device-class guard: a component naming an electrical/auxiliary device (sensor, solenoid,
+// switch, relay, heater, motor, pump, actuator, valve, module) is a DIFFERENT part from the
+// bare mechanical component of the same name. If one side names such a device and the other
+// does not, they must not match ("Camshaft" vs "Camshaft Position Sensor").
+const DEVICE = new Set(["sensor","solenoid","switch","relay","heater","motor","pump","actuator","valve","module"]);
+const hasDevice = (t: string[]): boolean => t.some((x) => DEVICE.has(x));
+const deviceMismatch = (a: string[], b: string[]): boolean => hasDevice(a) !== hasDevice(b);
+// backstop: reject a confident pairing whose labor hours are wildly divergent (>=4x),
+// which signals a different application/variant rather than the same job.
+const hoursDivergent = (a: number | null, b: number | null): boolean => a != null && b != null && a > 0 && b > 0 && Math.max(a, b) / Math.min(a, b) >= 4;
 const OP_LABEL: Record<string, string> = { replace: "Replace", "r&i": "R & I", overhaul: "Overhaul", refinish: "Refinish", inspect: "Inspect", adjust: "Adjust", bleed: "Bleed", align: "Align", test: "Test", service: "Service" };
 const cmpLabel = (comp: string, oc: string) => titleCase(comp) + " \u2014 " + (OP_LABEL[oc] || titleCase(oc));
 
@@ -518,7 +528,7 @@ export function buildLaborComparison(labor: RVLaborOp[]): LaborCompareRow[] {
   const rows: LaborCompareRow[] = [];
   for (const p of pd) {
     let best = -1, bestS = 0.5;
-    for (let i = 0; i < ad.length; i++) { if (usedAd.has(i) || ad[i].oc !== p.oc) continue; const sc = overlapScore(p.tokens, ad[i].tokens); if (sc >= bestS) { bestS = sc; best = i; } }
+    for (let i = 0; i < ad.length; i++) { if (usedAd.has(i) || ad[i].oc !== p.oc) continue; if (deviceMismatch(p.tokens, ad[i].tokens) || hoursDivergent(ad[i].hours, p.hours)) continue; const sc = overlapScore(p.tokens, ad[i].tokens); if (sc >= bestS) { bestS = sc; best = i; } }
     if (best >= 0) { usedAd.add(best); rows.push(row(cmpLabel(ad[best].comp, ad[best].oc), ad[best].hours, p.hours, null)); }
     else rows.push(row(cmpLabel(p.comp, p.oc), null, p.hours, null));
   }
