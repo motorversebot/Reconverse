@@ -490,7 +490,7 @@ function parseOp(o: RVLaborOp): { comp: string; op: string } {
 }
 const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
-const GENERIC = new Set(["brake","cover","system","component","control","module","unit","kit","set","assembly","housing","bracket","mount","shield","guard","panel","plate","clip","bolt","nut","seal","gasket","line","pipe","tube","hose","switch","sensor","valve","bearing","pump","motor","relay","actuator"]);
+const GENERIC = new Set(["brake","cover","system","component","control","module","unit","kit","set","assembly","housing","bracket","mount","shield","guard","panel","plate","clip","bolt","nut","seal","gasket","line","pipe","tube","hose","switch","sensor","valve","bearing","pump","motor","relay","actuator","cable"]);
 // component-token overlap, but only "confident" if a non-generic token is shared (so
 // "Caliper"~"CALIPER" matches, while generic "Brakes"~"BRAKE PEDAL" does not).
 function overlapScore(a: string[], b: string[]): number {
