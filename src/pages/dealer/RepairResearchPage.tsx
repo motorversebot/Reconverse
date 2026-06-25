@@ -385,7 +385,7 @@ export default function RepairResearchPage() {
               <span style={{ ...css("display:block;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px"), color: t.fg }}>Figures</span>
               <div style={css("display:flex;flex-direction:column;gap:14px")}>
                 {procDetail!.images.map((im, i) => (
-                  <AuthImage key={i} src={im.url} alt={`figure ${i + 1}`} className="rv-fig-img" />
+                  <AuthImage key={i} src={im.url} alt={`figure ${i + 1}`} className="rv-fig-img" minH={240} />
                 ))}
               </div>
             </div>
@@ -600,7 +600,7 @@ export default function RepairResearchPage() {
                 </div>
                 <div style={{ ...css("padding:14px;display:flex;flex-direction:column;gap:12px"), background: "#ffffff" }}>
                   {imgs.length ? imgs.map((im, ii) => (
-                    <AuthImage key={ii} src={im.url} alt={w.description || w.circuit} className="rv-wire-img" />
+                    <AuthImage key={ii} src={im.url} alt={w.description || w.circuit} className="rv-wire-img" minH={200} />
                   )) : (
                     <div style={{ ...css("height:160px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px"), color: "#9aa1ab" }}>No diagram image stored</div>
                   )}
