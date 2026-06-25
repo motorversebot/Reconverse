@@ -396,8 +396,10 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
     title: procTitle(p), summary: procPath(p) || p.summary || "", fitment: p.fitment_level, source: p.source || "—",
     meta: p.source_ref || (p.step_count ? `${p.step_count} steps` : ""), target: "procedure", procId: p.id,
   });
-  const allProcQuery = /^procedures?$/.test(q);
-  const procMatches = b.procedures.filter(p => srcOk(p.source) && (allProcQuery || hit(p.title) || hit(p.summary || "") || hit(p.system || "")));
+  const sectionMode: "proc" | "dtc" | null = /^procedures?$/.test(q) ? "proc" : /^(diagnostics?|dtcs?|trouble codes?)$/.test(q) ? "dtc" : null;
+  const allProcQuery = sectionMode === "proc";
+  const allDtcQuery = sectionMode === "dtc";
+  const procMatches = (sectionMode && !allProcQuery) ? [] : b.procedures.filter(p => srcOk(p.source) && (allProcQuery || hit(p.title) || hit(p.summary || "") || hit(p.system || "")));
   const bySys: Record<string, RVProcedure[]> = {};
   const flatProcs: RVProcedure[] = [];
   for (const p of procMatches) {
@@ -410,15 +412,17 @@ export function searchBundle(b: ResearchBundle, query: string, fitment: "all" | 
     push(sys, bySys[sys].slice().sort((a, b2) => procRank(b2) - procRank(a)).map(procItem));
   }
   if (flatProcs.length) push("Procedures", flatProcs.slice().sort((a, b2) => procRank(b2) - procRank(a)).map(procItem));
-  push("Labor", b.labor.filter(o => srcOk(o.source) && hit(o.operation)).map(o => ({
+  if (sectionMode === "proc") return groups;
+  if (!sectionMode) push("Labor", b.labor.filter(o => srcOk(o.source) && hit(o.operation)).map(o => ({
     title: o.operation, summary: o.note || "", fitment: "exact", source: "Labor Guide", meta: o.hours != null ? `${o.hours} hr` : "", target: "labor",
   })));
-  push("Specs", b.specs.filter(s => srcOk("ALLDATA") && hit(s.name)).map(s => ({
+  if (!sectionMode) push("Specs", b.specs.filter(s => srcOk("ALLDATA") && hit(s.name)).map(s => ({
     title: s.name, summary: s.value || "", fitment: "exact", source: "OEM", meta: s.kind, target: "labor",
   })));
-  push("DTCs", b.dtcs.filter(d => srcOk("ALLDATA") && (hit(d.code) || hit(d.description || ""))).map(d => ({
+  push("DTCs", b.dtcs.filter(d => srcOk("ALLDATA") && (allDtcQuery || hit(d.code) || hit(d.description || ""))).map(d => ({
     title: `${d.code} — ${d.description || ""}`.trim(), summary: d.causes || "", fitment: "possible", source: "OEM", meta: d.system || "", target: "results",
   })));
+  if (sectionMode === "dtc") return groups;
   push("TSBs", b.tsbs.filter(t => srcOk("ALLDATA") && (hit(t.title || "") || hit(t.tsb_number || ""))).map(t => ({
     title: t.title || t.tsb_number || "", summary: t.summary || "", fitment: t.fitment_level, source: "TSB", meta: t.tsb_number || "", target: "tsb",
   })));

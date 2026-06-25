@@ -144,12 +144,12 @@ export default function RepairResearchPage() {
     { label: "Stock", value: v.stock || "—" },
   ];
   const tiles: [string, string, () => void, LucideIcon][] = [
-    ["Procedures", String(b.procedures.length), () => runSearch("procedure"), Wrench],
+    ["Procedures", String(b.procedures.length), () => runSearch("procedures"), Wrench],
     ["Labor Times", String(b.labor.length), () => setView("labor"), Clock],
     ["Torque Specs", String(torque.length), () => setView("labor"), Gauge],
     ["Fluids", String(fluids.length), () => setView("labor"), Droplets],
     ["Wiring", String(b.wiring.length), () => setView("wiring"), Cable],
-    ["Diagnostics", String(b.dtcs.length), () => runSearch("P0101"), Activity],
+    ["Diagnostics", String(b.dtcs.length), () => runSearch("diagnostics"), Activity],
     ["Parts", String(b.parts.length), () => setView("parts"), Package],
     ["TSBs", String(b.tsbs.length), () => setView("tsb"), FileText],
     ["Recalls", String(b.recalls.length), () => setView("tsb"), AlertTriangle],
