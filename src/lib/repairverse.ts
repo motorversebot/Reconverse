@@ -553,3 +553,34 @@ export function sourcesPresent(b: ResearchBundle): Set<SourceKey> {
   if (b.notes && b.notes.length) set.add("internal");
   return set;
 }
+
+// --- Procedure body formatter ------------------------------------------------
+// ALLDATA procedure text often arrives as one run-together block (special tools,
+// NOTE/CAUTION callouts, the "▶" figure markers, and the action steps all mashed
+// together). This structures it into tools + numbered steps + notes/headings so the
+// procedure reads like the source pages instead of a wall of text.
+export interface ProcLine { kind: "heading" | "note" | "step"; level?: "note" | "caution" | "warning"; text: string; }
+export interface ParsedProcedure { tools: string[]; lines: ProcLine[]; }
+export function parseProcedure(steps: { step_no?: number; title?: string; body?: string }[] | undefined | null): ParsedProcedure {
+  const res: ParsedProcedure = { tools: [], lines: [] };
+  let b = (steps || []).map((s) => (s.title && s.title !== "Procedure" ? s.title + ". " : "") + (s.body || "")).join(" ▶ ").replace(/▶/g, " §F§ ").replace(/\s+/g, " ").trim();
+  if (!b) return res;
+  // drop leading "501-03 ... revision date: 10/2/2020 <Title>" doc header
+  b = b.replace(/^\s*\d[\d-]*\s+.*?revision date:\s*[\d/]+\s*/i, "");
+  // special tools / general equipment
+  const tm = b.match(/Special Tool\(s\)\s*(?:\/\s*General Equipment)?\s+(.*?)\s*(?=\b(?:Removal|Installation|Disassembly|Assembly|Inspection|Testing|Adjustment|Cleaning|Repair)\b|NOTE:|CAUTION:|WARNING:|$)/i);
+  if (tm && tm[1].trim()) {
+    res.tools = tm[1].trim().split(/\s{2,}|,|;|•/).map((s) => s.trim()).filter((x) => x.length > 1).slice(0, 12);
+    b = (b.slice(0, tm.index) + " " + b.slice((tm.index || 0) + tm[0].length)).trim();
+  }
+  const parts = b.split(/§F§/).map((s) => s.trim()).filter(Boolean);
+  for (let p of parts) {
+    const hm = p.match(/^(Removal|Installation|Disassembly|Assembly|Inspection|Testing|Adjustment|Cleaning|Repair)\b\s*/i);
+    if (hm) { res.lines.push({ kind: "heading", text: hm[1] }); p = p.slice(hm[0].length).trim(); }
+    if (!p) continue;
+    const nm = p.match(/^(NOTE|CAUTION|WARNING|Important)[:!]?\s*/i);
+    if (nm) { const lv = nm[1].toLowerCase(); res.lines.push({ kind: "note", level: lv === "important" ? "caution" : (lv as "note" | "caution" | "warning"), text: p.slice(nm[0].length).trim() || p }); }
+    else res.lines.push({ kind: "step", text: p });
+  }
+  return res;
+}

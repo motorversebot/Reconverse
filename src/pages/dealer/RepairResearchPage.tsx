@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import {
   getResearchBundle, getProcedureDetail, getCompare, searchBundle, isKnownQuery, saveShopNote,
-  buildLaborComparison, sourcesPresent, srcBucket,
+  buildLaborComparison, sourcesPresent, srcBucket, parseProcedure,
   type FitmentLevel, type ResearchBundle, type SourceKey,
 } from "@/lib/repairverse";
 
@@ -113,6 +113,7 @@ export default function RepairResearchPage() {
   const [sourceTab, setSourceTab] = useState<SourceKey | "all">("all");
   const present = useMemo(() => (b ? sourcesPresent(b) : new Set<SourceKey>()), [b]);
   const laborComparison = useMemo(() => (b ? buildLaborComparison(b.labor) : []), [b]);
+  const procParsed = useMemo(() => (procDetail ? parseProcedure(procDetail.steps) : null), [procDetail]);
   const laborShown = useMemo(() => (b ? (sourceTab === "all" ? b.labor : b.labor.filter((o) => srcBucket(o.source) === sourceTab)) : []), [b, sourceTab]);
   const srcLabel = (sn: string | null) => (({ alldata: "ALLDATA", prodemand: "ProDemand", oem: "OEM/ESM", internal: "Internal" }) as Record<string, string>)[srcBucket(sn)];
   const known = isKnownQuery(query);
@@ -398,15 +399,23 @@ export default function RepairResearchPage() {
                 <div style={{ ...css("font-size:13px;padding:13px 0"), color: t.fg3 }}>Loading procedure steps…</div>
               ) : (procDetail?.steps?.length ?? 0) === 0 ? (
                 <div style={{ ...css("font-size:13px;padding:13px 0"), color: t.fg3 }}>No step-by-step detail available for this procedure.</div>
-              ) : (procDetail!.steps.map((s, i) => (
-                <div key={i} style={{ ...css("display:flex;gap:14px;padding:14px 0;border-bottom:1px solid"), borderColor: t.border }}>
-                  <span style={{ ...css("flex:none;width:28px;height:28px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center"), background: t.accentSoft, color: t.accent }}>{s.step_no}</span>
-                  <div>
-                    <span style={{ ...css("display:block;font-size:14px;font-weight:600;margin-bottom:3px"), color: t.fg }}>{s.title}</span>
-                    <span style={{ ...css("display:block;font-size:13px;line-height:1.55"), color: t.fg2 }}>{s.body}</span>
-                  </div>
-                </div>
-              )))}
+              ) : (
+                <>
+                  {(procParsed?.tools?.length ?? 0) > 0 && (
+                    <div style={{ ...css("border:1px solid;border-radius:11px;padding:12px 15px;margin-bottom:16px"), borderColor: t.border, background: t.surface }}>
+                      <span style={{ ...css("display:block;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:9px"), color: t.fg3 }}>Special tools / equipment</span>
+                      <div style={css("display:flex;gap:7px;flex-wrap:wrap")}>
+                        {procParsed!.tools.map((tl, i) => <span key={i} style={{ ...css("font-size:12px;padding:4px 10px;border-radius:7px;font-weight:500"), background: t.accentSoft, color: t.accent }}>{tl}</span>)}
+                      </div>
+                    </div>
+                  )}
+                  {(() => { let n = 0; return (procParsed?.lines ?? []).map((ln, i) => {
+                    if (ln.kind === "heading") return <h3 key={i} style={{ ...css("font-size:12.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid"), color: t.fg, borderColor: t.border }}>{ln.text}</h3>;
+                    if (ln.kind === "note") { const wc = ln.level === "warning" ? t.warn : ln.level === "caution" ? t.possible : t.fg3; return <div key={i} style={{ ...css("display:flex;gap:9px;padding:9px 12px;border-radius:9px;margin:0 0 10px;border:1px solid"), background: `${wc}14`, borderColor: `${wc}40` }}><span style={{ ...css("font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;flex:none;padding-top:2px"), color: wc }}>{ln.level}</span><span style={{ ...css("font-size:12.5px;line-height:1.5"), color: t.fg2 }}>{ln.text}</span></div>; }
+                    n++; return <div key={i} style={{ ...css("display:flex;gap:13px;padding:11px 0;border-bottom:1px solid"), borderColor: t.border }}><span style={{ ...css("flex:none;width:26px;height:26px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center"), background: t.accentSoft, color: t.accent }}>{n}</span><span style={{ ...css("font-size:13px;line-height:1.6;padding-top:2px"), color: t.fg }}>{ln.text}</span></div>;
+                  }); })()}
+                </>
+              )}
             </div>
             <div style={css("display:flex;flex-direction:column;gap:18px")}>
               <div style={{ ...css("border:1px solid;border-radius:11px;padding:15px 16px"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
