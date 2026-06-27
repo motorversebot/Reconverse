@@ -584,3 +584,17 @@ export function parseProcedure(steps: { step_no?: number; title?: string; body?:
   }
   return res;
 }
+
+// --- Systems & Components browse (mirrors ALLDATA's system tree) -------------
+export function systemsIndex(b: ResearchBundle): { name: string; count: number }[] {
+  const m = new Map<string, number>();
+  for (const p of b.procedures) {
+    const top = (p.system || "").split(/\s*>\s*/)[0].replace(/&amp;/g, "&").trim();
+    if (top) m.set(top, (m.get(top) || 0) + 1);
+  }
+  return Array.from(m.entries()).map(([name, count]) => ({ name, count })).sort((a, b2) => b2.count - a.count);
+}
+export function proceduresForSystem(b: ResearchBundle, system: string): RVProcedure[] {
+  const want = system.toLowerCase();
+  return b.procedures.filter((p) => (p.system || "").split(/\s*>\s*/)[0].replace(/&amp;/g, "&").trim().toLowerCase() === want);
+}
