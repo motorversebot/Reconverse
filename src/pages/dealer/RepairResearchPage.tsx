@@ -15,7 +15,7 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import {
   Search, Wrench, Clock, Gauge, Droplets, Cable, Activity, FileText,
-  AlertTriangle, MapPin, CalendarClock, StickyNote, Package, RotateCcw, type LucideIcon,
+  AlertTriangle, MapPin, CalendarClock, StickyNote, Package, RotateCcw, ChevronRight, type LucideIcon,
 } from "lucide-react";
 import {
   getResearchBundle, getProcedureDetail, getCompare, searchBundle, isKnownQuery, saveShopNote,
@@ -79,6 +79,7 @@ export default function RepairResearchPage() {
   const [activeProc, setActiveProc] = useState(0);
   const [activeProcId, setActiveProcId] = useState<number | null>(null);
   const [activeSystem, setActiveSystem] = useState<string | null>(null);
+  const [expandedSys, setExpandedSys] = useState<Set<string>>(new Set());
   const [cmpQ, setCmpQ] = useState("");
   const noteForm = useRef<{ pattern: string; term: string; body: string }>({ pattern: "", term: "", body: "" });
 
@@ -285,25 +286,38 @@ export default function RepairResearchPage() {
 
       {view === "system" && activeSystem && (() => {
         const procs = proceduresForSystem(b, activeSystem);
-        const groups: Record<string, typeof procs> = {};
-        for (const p of procs) { const seg = (p.system || "").split(/\s*>\s*/).map((x) => x.replace(/&amp;/g, "&").trim()).filter(Boolean); const sub = seg.slice(1).join(" \u203A ") || "General"; (groups[sub] = groups[sub] || []).push(p); }
-        const subs = Object.keys(groups).sort();
+        const comps: Record<string, typeof procs> = {};
+        for (const p of procs) { const seg = (p.system || "").split(/\s*>\s*/).map((x) => x.replace(/&amp;/g, "&").trim()).filter(Boolean); const comp = seg[1] || "General"; (comps[comp] = comps[comp] || []).push(p); }
+        const names = Object.keys(comps).sort();
         return (
           <div className="rv-fade" style={css("max-width:940px;margin:0 auto;padding:26px 22px 70px")}>
-            <button className="rv-btng" onClick={() => setView("home")} style={{ ...css("height:30px;padding:0 13px;border-radius:8px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px"), borderColor: t.border, background: t.surface, color: t.fg2 }}>\u2190 All systems</button>
+            <button className="rv-btng" onClick={() => setView("home")} style={{ ...css("height:30px;padding:0 13px;border-radius:8px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px"), borderColor: t.border, background: t.surface, color: t.fg2 }}>← All systems</button>
             <h1 style={{ ...css("font-size:26px;letter-spacing:-.6px;font-weight:700;margin:0 0 5px;text-transform:capitalize"), color: t.fg }}>{activeSystem.toLowerCase()}</h1>
-            <p style={{ ...css("font-size:13px;margin:0 0 24px"), color: t.fg2 }}>{procs.length} procedures \u00B7 {v.full}</p>
-            {subs.map((sub, gi) => (
-              <div key={gi} style={css("margin-bottom:22px")}>
-                <h3 style={{ ...css("font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid"), color: t.fg3, borderColor: t.border }}>{sub}</h3>
-                {groups[sub].map((p, i) => (
-                  <div key={i} style={{ ...css("display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-radius:10px;border:1px solid;margin-bottom:8px"), borderColor: t.border, background: t.surface }}>
-                    <span style={{ ...css("font-size:13.5px;font-weight:500"), color: t.fg }}>{p.title}{p.step_count ? <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px;margin-left:9px"), color: t.fg3 }}>{p.step_count} steps</span> : null}</span>
-                    <button className="rv-btnp" onClick={() => { setActiveProcId(p.id); setView("procedure"); }} style={{ ...css("flex:none;height:31px;padding:0 15px;border-radius:8px;border:none;font-weight:600;font-size:12.5px;cursor:pointer"), background: t.accent, color: t.accentFg }}>Open</button>
-                  </div>
-                ))}
-              </div>
-            ))}
+            <p style={{ ...css("font-size:13px;margin:0 0 22px"), color: t.fg2 }}>{procs.length} procedures · {names.length} components · {v.full}</p>
+            {names.map((comp, gi) => {
+              const open = expandedSys.has(comp);
+              const items = comps[comp];
+              return (
+                <div key={gi} style={{ ...css("border:1px solid;border-radius:12px;margin-bottom:10px;overflow:hidden"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
+                  <button onClick={() => setExpandedSys((prev) => { const n = new Set(prev); if (n.has(comp)) n.delete(comp); else n.add(comp); return n; })} style={{ ...css("width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border:none;background:transparent;cursor:pointer;text-align:left") }}>
+                    <span style={{ ...css("font-size:14px;font-weight:600;text-transform:capitalize"), color: t.fg }}>{comp.toLowerCase()}</span>
+                    <span style={css("display:flex;align-items:center;gap:11px")}><span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px;padding:2px 8px;border-radius:6px"), color: t.accent, background: t.accentSoft }}>{items.length}</span><ChevronRight size={16} strokeWidth={2.2} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s", color: t.fg3 }} /></span>
+                  </button>
+                  {open && (
+                    <div style={css("padding:2px 14px 10px")}>
+                      {items.map((p, i) => { const seg = (p.system || "").split(/\s*>\s*/).map((x) => x.replace(/&amp;/g, "&").trim()).filter(Boolean); const path = seg.slice(2).join(" › ");
+                        return (
+                          <div key={i} style={{ ...css("display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px;border-top:1px solid"), borderColor: t.border }}>
+                            <div style={css("min-width:0")}><span style={{ ...css("display:block;font-size:13.5px;font-weight:500"), color: t.fg }}>{p.title}{p.step_count ? <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px;margin-left:9px"), color: t.fg3 }}>{p.step_count} steps</span> : null}</span>{path ? <span style={{ ...css("display:block;font-size:11px;font-family:'IBM Plex Mono',monospace;margin-top:2px"), color: t.fg3 }}>{path}</span> : null}</div>
+                            <button className="rv-btnp" onClick={() => { setActiveProcId(p.id); setView("procedure"); }} style={{ ...css("flex:none;height:30px;padding:0 14px;border-radius:8px;border:none;font-weight:600;font-size:12px;cursor:pointer"), background: t.accent, color: t.accentFg }}>Open</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })()}
