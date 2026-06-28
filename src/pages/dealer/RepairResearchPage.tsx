@@ -19,11 +19,11 @@ import {
 } from "lucide-react";
 import {
   getResearchBundle, getProcedureDetail, getCompare, searchBundle, isKnownQuery, saveShopNote,
-  buildLaborComparison, sourcesPresent, srcBucket, parseProcedure, systemsIndex, proceduresForSystem,
+  buildLaborComparison, sourcesPresent, srcBucket, parseProcedure, systemsIndex, proceduresForSystem, infoCategories, proceduresByCategory,
   type FitmentLevel, type ResearchBundle, type SourceKey,
 } from "@/lib/repairverse";
 
-type View = "home" | "results" | "procedure" | "labor" | "tsb" | "wiring" | "notes" | "compare" | "parts" | "system";
+type View = "home" | "results" | "procedure" | "labor" | "tsb" | "wiring" | "notes" | "compare" | "parts" | "system" | "category";
 
 const THEMES = {
   light: { bg:"#f7f8f9", surface:"#ffffff", surface2:"#eef0f2", border:"#e6e8eb", border2:"#d6dade", fg:"#15181c", fg2:"#586070", fg3:"#9aa1ab", accent:"#5f9a0c", accentDeep:"#4c7d09", accentFg:"#ffffff", accentSoft:"rgba(95,154,12,0.10)", exact:"#16a34a", possible:"#d97706", generic:"#9aa1ab", warn:"#dc2626", warnBg:"rgba(220,38,38,0.05)", shadow:"0 1px 2px rgba(15,23,42,0.06)", shMd:"0 6px 20px -8px rgba(15,23,42,0.14)", ring:"0 0 0 3px rgba(95,154,12,0.18)" },
@@ -79,6 +79,7 @@ export default function RepairResearchPage() {
   const [activeProc, setActiveProc] = useState(0);
   const [activeProcId, setActiveProcId] = useState<number | null>(null);
   const [activeSystem, setActiveSystem] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedSys, setExpandedSys] = useState<Set<string>>(new Set());
   const [cmpQ, setCmpQ] = useState("");
   const noteForm = useRef<{ pattern: string; term: string; body: string }>({ pattern: "", term: "", body: "" });
@@ -117,6 +118,7 @@ export default function RepairResearchPage() {
   const laborComparison = useMemo(() => (b ? buildLaborComparison(b.labor) : []), [b]);
   const procParsed = useMemo(() => (procDetail ? parseProcedure(procDetail.steps) : null), [procDetail]);
   const systems = useMemo(() => (b ? systemsIndex(b) : []), [b]);
+  const infoCats = useMemo(() => (b ? infoCategories(b) : []), [b]);
   const laborShown = useMemo(() => (b ? (sourceTab === "all" ? b.labor : b.labor.filter((o) => srcBucket(o.source) === sourceTab)) : []), [b, sourceTab]);
   const srcLabel = (sn: string | null) => (({ alldata: "ALLDATA", prodemand: "ProDemand", oem: "OEM/ESM", internal: "Internal" }) as Record<string, string>)[srcBucket(sn)];
   const known = isKnownQuery(query);
@@ -281,8 +283,47 @@ export default function RepairResearchPage() {
               </div>
             </div>
           )}
+          {infoCats.length > 0 && (
+            <div style={css("margin-top:30px")}>
+              <span style={{ ...css("font-size:11px;font-weight:600;letter-spacing:.9px;text-transform:uppercase"), color: t.fg3 }}>Information</span>
+              <div style={css("display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:14px")}>
+                {infoCats.map((ic, i) => (
+                  <button key={i} className="rv-tile" onClick={() => { setActiveCategory(ic.key); setView("category"); }} style={{ ...css("display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;padding:14px 16px;border-radius:12px;border:1px solid;cursor:pointer"), borderColor: t.border, background: t.surface, boxShadow: t.shadow }}>
+                    <span style={{ ...css("font-size:13.5px;font-weight:600"), color: t.fg }}>{ic.name}</span>
+                    <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px;padding:2px 8px;border-radius:6px"), color: t.accent, background: t.accentSoft }}>{ic.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {view === "category" && activeCategory && (() => {
+        const arts = proceduresByCategory(b, activeCategory);
+        const label = (infoCats.find((c) => c.key === activeCategory) || {}).name || activeCategory;
+        const groups: Record<string, typeof arts> = {};
+        for (const p of arts) { const sys = (p.system || "General").replace(/&amp;/g, "&").trim(); (groups[sys] = groups[sys] || []).push(p); }
+        const names = Object.keys(groups).sort();
+        return (
+          <div className="rv-fade" style={css("max-width:940px;margin:0 auto;padding:26px 22px 70px")}>
+            <button className="rv-btng" onClick={() => setView("home")} style={{ ...css("height:30px;padding:0 13px;border-radius:8px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px"), borderColor: t.border, background: t.surface, color: t.fg2 }}>← Back to vehicle</button>
+            <h1 style={{ ...css("font-size:26px;letter-spacing:-.6px;font-weight:700;margin:0 0 5px"), color: t.fg }}>{label}</h1>
+            <p style={{ ...css("font-size:13px;margin:0 0 24px"), color: t.fg2 }}>{arts.length} articles · {v.full}</p>
+            {names.map((sys, gi) => (
+              <div key={gi} style={css("margin-bottom:22px")}>
+                <h3 style={{ ...css("font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid;text-transform:capitalize"), color: t.fg3, borderColor: t.border }}>{sys.toLowerCase()}</h3>
+                {groups[sys].map((p, i) => (
+                  <div key={i} style={{ ...css("display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-radius:10px;border:1px solid;margin-bottom:8px"), borderColor: t.border, background: t.surface }}>
+                    <span style={{ ...css("font-size:13.5px;font-weight:500"), color: t.fg }}>{p.title}{p.step_count ? <span style={{ ...css("font-family:'IBM Plex Mono',monospace;font-size:11px;margin-left:9px"), color: t.fg3 }}>{p.step_count} steps</span> : null}</span>
+                    <button className="rv-btnp" onClick={() => { setActiveProcId(p.id); setView("procedure"); }} style={{ ...css("flex:none;height:31px;padding:0 15px;border-radius:8px;border:none;font-weight:600;font-size:12.5px;cursor:pointer"), background: t.accent, color: t.accentFg }}>Open</button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {view === "system" && activeSystem && (() => {
         const procs = proceduresForSystem(b, activeSystem);

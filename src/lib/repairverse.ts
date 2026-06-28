@@ -55,6 +55,7 @@ export interface RVProcedure {
   step_count: number;
   warning_count: number;
   part_count: number;
+  category: string;
 }
 
 /** Procedure DETAIL — lazy-loaded when a procedure is opened. */
@@ -259,7 +260,7 @@ function normProcedure(p: any): RVProcedure {
     id: Number(p.id), title: str(p.title) ?? "", system: str(p.system), summary: str(p.summary),
     difficulty: str(p.difficulty), fitment_level: (p.fitment_level ?? "exact"),
     labor_hours: num(p.labor_hours), source: str(p.source), source_ref: str(p.source_ref),
-    step_count: num(p.step_count) ?? 0, warning_count: num(p.warning_count) ?? 0, part_count: num(p.part_count) ?? 0,
+    step_count: num(p.step_count) ?? 0, warning_count: num(p.warning_count) ?? 0, part_count: num(p.part_count) ?? 0, category: str(p.category) ?? "service_repair",
   };
 }
 
@@ -589,6 +590,7 @@ export function parseProcedure(steps: { step_no?: number; title?: string; body?:
 export function systemsIndex(b: ResearchBundle): { name: string; count: number }[] {
   const m = new Map<string, number>();
   for (const p of b.procedures) {
+    if (p.category && p.category !== "service_repair") continue;
     const top = (p.system || "").split(/\s*>\s*/)[0].replace(/&amp;/g, "&").trim();
     if (top) m.set(top, (m.get(top) || 0) + 1);
   }
@@ -596,5 +598,16 @@ export function systemsIndex(b: ResearchBundle): { name: string; count: number }
 }
 export function proceduresForSystem(b: ResearchBundle, system: string): RVProcedure[] {
   const want = system.toLowerCase();
-  return b.procedures.filter((p) => (p.system || "").split(/\s*>\s*/)[0].replace(/&amp;/g, "&").trim().toLowerCase() === want);
+  return b.procedures.filter((p) => (!p.category || p.category === "service_repair") && (p.system || "").split(/\s*>\s*/)[0].replace(/&amp;/g, "&").trim().toLowerCase() === want);
+}
+
+
+const ARTICLE_CATS: Record<string, string> = { description_operation: "Description & Operation", testing_inspection: "Testing & Inspection", service_precautions: "Service Precautions", adjustments: "Adjustments" };
+export function infoCategories(b: ResearchBundle): { key: string; name: string; count: number }[] {
+  const m = new Map<string, number>();
+  for (const p of b.procedures) { const cat = p.category || "service_repair"; if (cat !== "service_repair") m.set(cat, (m.get(cat) || 0) + 1); }
+  return Object.keys(ARTICLE_CATS).filter((k) => m.has(k)).map((k) => ({ key: k, name: ARTICLE_CATS[k], count: m.get(k) as number }));
+}
+export function proceduresByCategory(b: ResearchBundle, cat: string): RVProcedure[] {
+  return b.procedures.filter((p) => (p.category || "service_repair") === cat);
 }
