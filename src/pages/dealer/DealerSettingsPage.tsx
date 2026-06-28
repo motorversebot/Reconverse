@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { User, Sun, Moon, Monitor, KeyRound, Mail, Shield, LogOut, Save, ShieldCheck } from "lucide-react";
 import { useCurrentDealer } from "@/hooks/useDealerData";
-import { getCarfaxConfig, saveCarfaxConfig, CARFAX_TEMPLATE_HINT, type CarfaxConfig } from "@/lib/carfax";
+import { fetchCarfaxConfigServer, saveCarfaxConfigServer, CARFAX_TEMPLATE_HINT, type CarfaxConfig } from "@/lib/carfax";
 import { canManageUsers } from "@/lib/permissions";
 
 type Theme = "dark" | "light" | "system";
@@ -56,11 +56,12 @@ export default function DealerSettingsPage() {
   const dealerId = membership?.dealer_id;
   const canManageCarfax = canManageUsers(membership?.role);
   const [carfax, setCarfax] = useState<CarfaxConfig>({ enabled: false, linkTemplate: "", badgeType: "CARFAX Report" });
-  useEffect(() => { if (dealerId) setCarfax(getCarfaxConfig(dealerId)); }, [dealerId]);
-  const handleSaveCarfax = () => {
+  useEffect(() => { if (dealerId) void fetchCarfaxConfigServer(dealerId).then(setCarfax); }, [dealerId]);
+  const handleSaveCarfax = async () => {
     if (!dealerId) return;
-    saveCarfaxConfig(dealerId, carfax);
-    toast({ title: "CARFAX settings saved" });
+    const ok = await saveCarfaxConfigServer(dealerId, carfax);
+    toast(ok ? { title: "CARFAX settings saved", description: "Applied dealership-wide." }
+             : { title: "Couldn't save", description: "Only managers can configure CARFAX.", variant: "destructive" });
   };
 
   useEffect(() => {

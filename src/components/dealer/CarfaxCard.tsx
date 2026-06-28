@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   ShieldCheck, ExternalLink, Link2, RefreshCw, X, Settings2, Loader2,
@@ -12,12 +13,13 @@ import {
 import {
   resolveCarfax, canGenerateCarfax, generateCarfaxLink,
   attachCarfaxLink, clearCarfaxLink, extractCarfaxUrl, patchUnitCarfax,
+  fetchCarfaxConfigServer, saveCarfaxConfigServer, CARFAX_TEMPLATE_HINT, type CarfaxConfig,
 } from "@/lib/carfax";
 import {
   getUnitChecks, runUnitChecks, EMPTY_CHECKS,
   type UnitChecks, type UnitRecallRecord,
 } from "@/lib/unitChecks";
-import { canEditUnits } from "@/lib/permissions";
+import { canEditUnits, canAdvanceStage } from "@/lib/permissions";
 
 interface Props {
   unit: { id?: string; vin?: string | null };
@@ -30,6 +32,7 @@ export default function CarfaxCard({ unit, unitId, dealerId, role }: Props) {
   const { toast } = useToast();
   const id = unitId || unit?.id || "";
   const canEdit = canEditUnits(role);
+  const canConfig = canAdvanceStage(role);
 
   const [checks, setChecks] = useState<UnitChecks>(EMPTY_CHECKS);
   const [loading, setLoading] = useState(true);
@@ -38,13 +41,26 @@ export default function CarfaxCard({ unit, unitId, dealerId, role }: Props) {
   const [attachInput, setAttachInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [cfg, setCfg] = useState<CarfaxConfig>({ enabled: false, linkTemplate: "", badgeType: "CARFAX Report" });
+  const [savingCfg, setSavingCfg] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    // Dealer-wide CARFAX config is a live setting → fetch + cache it first.
+    const serverCfg = await fetchCarfaxConfigServer(dealerId);
+    setCfg(serverCfg);
     let next: UnitChecks | null = id ? await getUnitChecks(id) : null;
-    if (!next) {
-      // MC checks not available yet → show local CARFAX, recalls "not checked".
-      const cf = resolveCarfax(unit ?? {}, dealerId);
+    const cf = resolveCarfax(unit ?? {}, dealerId);
+    if (next) {
+      // Overlay the live provider/link state onto the checks (config can change
+      // after a check was last run, so the provider status must not be stale).
+      next = { ...next };
+      const liveUrl = next.carfax_report_url || cf.carfax_report_url;
+      if (liveUrl) { next.carfax_status = "available"; next.carfax_report_url = liveUrl; }
+      else if (cf.carfax_link_status === "not_configured") next.carfax_status = "provider_not_configured";
+      else if (next.carfax_status !== "failed") next.carfax_status = "available_not_attached";
+    } else {
       next = {
         ...EMPTY_CHECKS,
         carfax_status: cf.carfax_report_url ? "available"
@@ -56,6 +72,16 @@ export default function CarfaxCard({ unit, unitId, dealerId, role }: Props) {
     setChecks(next);
     setLoading(false);
   }, [unit, dealerId, id]);
+
+  const saveSetup = async () => {
+    if (!dealerId) return;
+    setSavingCfg(true);
+    try {
+      const ok = await saveCarfaxConfigServer(dealerId, cfg);
+      if (ok) { toast({ title: "CARFAX configured", description: cfg.enabled ? "Links enabled dealership-wide." : "Saved." }); setSetupOpen(false); await load(); }
+      else toast({ title: "Couldn't save", description: "Only managers can configure CARFAX.", variant: "destructive" });
+    } finally { setSavingCfg(false); }
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -145,10 +171,10 @@ export default function CarfaxCard({ unit, unitId, dealerId, role }: Props) {
               ) : carfaxStatus === "provider_not_configured" ? (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">CARFAX provider not configured.</p>
-                  {canEdit && (
+                  {(canConfig || canEdit) && (
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button asChild variant="outline" size="sm" className="gap-2"><Link to="/dealer/settings"><Settings2 className="h-4 w-4" /> Set up CARFAX</Link></Button>
-                      <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => openModal(false)}><Link2 className="h-4 w-4" /> Attach link</Button>
+                      {canConfig && <Button variant="outline" size="sm" className="gap-2" onClick={() => setSetupOpen(true)}><Settings2 className="h-4 w-4" /> Set up CARFAX</Button>}
+                      {canEdit && <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => openModal(false)}><Link2 className="h-4 w-4" /> Attach link</Button>}
                     </div>
                   )}
                 </div>
@@ -253,6 +279,34 @@ export default function CarfaxCard({ unit, unitId, dealerId, role }: Props) {
             <Button size="sm" onClick={handleAttach} disabled={saving || !attachInput.trim()} className="gap-1.5">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
               {saving ? "Saving…" : "Attach link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CARFAX provider setup (dealership-wide, managers only) */}
+      <Dialog open={setupOpen} onOpenChange={(o) => !o && setSetupOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Set up CARFAX</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={cfg.enabled} onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })} className="h-4 w-4 accent-primary" />
+              Enable CARFAX links for this dealership
+            </label>
+            <div className="space-y-1">
+              <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Link Reports template</label>
+              <Input value={cfg.linkTemplate} onChange={(e) => setCfg({ ...cfg, linkTemplate: e.target.value })} placeholder={CARFAX_TEMPLATE_HINT} className="font-mono text-xs" />
+              <p className="text-[11px] text-muted-foreground">From carfaxonline.com → Resources → Link Reports. Put <code className="font-mono">{"{VIN}"}</code> where the VIN goes. Applies dealership-wide.</p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Badge label</label>
+              <Input value={cfg.badgeType} onChange={(e) => setCfg({ ...cfg, badgeType: e.target.value })} placeholder="CARFAX Report" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setSetupOpen(false)} disabled={savingCfg}>Cancel</Button>
+            <Button size="sm" onClick={saveSetup} disabled={savingCfg} className="gap-1.5">
+              {savingCfg ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Settings2 className="h-3.5 w-3.5" />} Save
             </Button>
           </DialogFooter>
         </DialogContent>

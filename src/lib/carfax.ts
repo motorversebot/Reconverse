@@ -62,6 +62,41 @@ export function saveCarfaxConfig(dealerId: string, cfg: CarfaxConfig): void {
   try { localStorage.setItem(CFG_KEY(dealerId), JSON.stringify(cfg)); } catch { /* ignore */ }
 }
 
+/** Fetch the dealer-wide CARFAX config from MC; caches to localStorage so the
+ *  sync getCarfaxConfig/resolveCarfax paths see it. Falls back to local cache. */
+export async function fetchCarfaxConfigServer(dealerId?: string): Promise<CarfaxConfig> {
+  try {
+    const res = await apiFetch(`/api/v1/reconverse/dealer/carfax-config`);
+    const j = await res.json().catch(() => null);
+    if (res.ok && j?.ok && j.data) {
+      const cfg: CarfaxConfig = {
+        enabled: !!j.data.enabled,
+        linkTemplate: j.data.link_template || "",
+        badgeType: j.data.badge_type || "CARFAX Report",
+      };
+      if (dealerId) saveCarfaxConfig(dealerId, cfg);
+      return cfg;
+    }
+  } catch { /* fall through to cache */ }
+  return getCarfaxConfig(dealerId);
+}
+
+/** Persist the dealer-wide CARFAX config to MC (managers/owner only) + cache. */
+export async function saveCarfaxConfigServer(dealerId: string, cfg: CarfaxConfig): Promise<boolean> {
+  try {
+    const res = await apiFetch(`/api/v1/reconverse/dealer/carfax-config`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: cfg.enabled, link_template: cfg.linkTemplate, badge_type: cfg.badgeType }),
+    });
+    const j = await res.json().catch(() => null);
+    if (!res.ok || !j?.ok) return false;
+    if (j.data) saveCarfaxConfig(dealerId, { enabled: !!j.data.enabled, linkTemplate: j.data.link_template || "", badgeType: j.data.badge_type || "CARFAX Report" });
+    else saveCarfaxConfig(dealerId, cfg);
+    return true;
+  } catch { return false; }
+}
+
 /** Substitute the VIN into the dealer's link template. */
 export function buildCarfaxUrl(template: string, vin: string): string {
   const v = normalizeVin(vin);
